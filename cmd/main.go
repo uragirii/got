@@ -1,21 +1,41 @@
 package main
 
 import (
+	"flag"
 	"fmt"
-	"os"
 	"slices"
 
 	"github.com/uragirii/got/cmd/commands"
 )
 
+// TODO: use from git tags
+var version string = "0.0.0-pre-alpha"
+
 var COMMAND_TO_FUNC = map[string]func(){
 	"init": commands.Init,
+	"help": commands.Help,
 }
 
 var SUPPORTED_COMMANDS = []string{"init"}
 
 func main() {
-	args := os.Args[1:]
+
+	isVersion := flag.Bool("v", false, "version of got")
+	isHelp := flag.Bool("h", false, "help")
+
+	flag.Parse()
+
+	if *isVersion {
+		fmt.Printf("got version %s\n", version)
+		return
+	}
+
+	if *isHelp {
+		commands.Help()
+		return
+	}
+
+	args := flag.Args()
 
 	if len(args) == 0 {
 		fmt.Println("no arguments were provided")
