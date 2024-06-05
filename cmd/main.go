@@ -20,7 +20,7 @@ var SUPPORTED_COMMANDS = []string{"init"}
 
 func main() {
 
-	isVersion := flag.Bool("v", false, "version of got")
+	isVersion := flag.Bool("v", false, "version")
 	isHelp := flag.Bool("h", false, "help")
 
 	flag.Parse()
