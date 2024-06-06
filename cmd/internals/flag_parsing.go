@@ -26,7 +26,7 @@ type Command struct {
 
 func (c *Command) ParseCommand(args []string) {
 	c.parsedFlag = make(map[string]string)
-	c.Args = make([]string, len(args))
+	c.Args = make([]string, 0, len(args))
 
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
