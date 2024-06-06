@@ -3,21 +3,18 @@ package main
 import (
 	"flag"
 	"fmt"
-	"slices"
 
 	"github.com/uragirii/got/cmd/commands"
+	"github.com/uragirii/got/cmd/internals"
 )
 
 // TODO: use from git tags
 var version string = "0.0.0-pre-alpha"
 
-var COMMAND_TO_FUNC = map[string]func(){
-	"init":        commands.Init,
-	"help":        commands.Help,
-	"hash-object": commands.HashObject,
+var SUPPORTED_COMMANDS []*internals.Command = []*internals.Command{
+	commands.HASH_OBJECT,
+	commands.INIT,
 }
-
-var SUPPORTED_COMMANDS = []string{"init", "hash-object"}
 
 func main() {
 
@@ -45,15 +42,18 @@ func main() {
 
 	command := args[0]
 
-	isValidCmd := slices.Contains(SUPPORTED_COMMANDS, command)
+	var isValidCmd bool = false
+
+	for _, cmdDetails := range SUPPORTED_COMMANDS {
+		if cmdDetails.Name == command {
+			cmdDetails.ParseCommand(args[1:])
+			cmdDetails.Run(cmdDetails)
+			isValidCmd = true
+		}
+	}
 
 	if !isValidCmd {
 		fmt.Printf("%s is not a supported argument\n", command)
 		return
 	}
-
-	commandFunc := COMMAND_TO_FUNC[command]
-
-	commandFunc()
-
 }

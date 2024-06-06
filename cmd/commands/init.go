@@ -5,7 +5,16 @@ import (
 	"os"
 	"path"
 	"sync"
+
+	"github.com/uragirii/got/cmd/internals"
 )
+
+var INIT *internals.Command = &internals.Command{
+	Name:  "init",
+	Desc:  "Create an empty Git repository",
+	Flags: []*internals.Flag{},
+	Run:   Init,
+}
 
 var initFoldersList = [6]string{
 	"info",
@@ -109,7 +118,7 @@ func initFolder(gitPath string) {
 
 }
 
-func Init() {
+func Init(_ *internals.Command) {
 	cwd, err := os.Getwd()
 
 	if err != nil {

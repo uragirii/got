@@ -5,9 +5,33 @@ import (
 	"flag"
 	"fmt"
 	"os"
+
+	"github.com/uragirii/got/cmd/internals"
 )
 
-func HashObject() {
+var HASH_OBJECT *internals.Command = &internals.Command{
+	Name: "hash-object",
+	Desc: "Compute object ID and optionally create an object from a file",
+	Flags: []*internals.Flag{
+		{
+			Name:  "t",
+			Short: "",
+			Help:  "object type",
+			Key:   "type",
+			Type:  internals.String,
+		},
+		{
+			Name:  "w",
+			Short: "",
+			Help:  "write the object into the object database",
+			Key:   "write",
+			Type:  internals.Bool,
+		},
+	},
+	Run: HashObject,
+}
+
+func HashObject(c *internals.Command) {
 	filename := flag.Arg(1)
 
 	if filename == "" {
@@ -21,6 +45,8 @@ func HashObject() {
 		fmt.Println("error while reading file")
 		return
 	}
+
+	fmt.Println(c.Args)
 
 	header := []byte(fmt.Sprintf("blob %d\u0000", len(data)))
 
