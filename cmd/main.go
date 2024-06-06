@@ -12,11 +12,12 @@ import (
 var version string = "0.0.0-pre-alpha"
 
 var COMMAND_TO_FUNC = map[string]func(){
-	"init": commands.Init,
-	"help": commands.Help,
+	"init":        commands.Init,
+	"help":        commands.Help,
+	"hash-object": commands.HashObject,
 }
 
-var SUPPORTED_COMMANDS = []string{"init"}
+var SUPPORTED_COMMANDS = []string{"init", "hash-object"}
 
 func main() {
 

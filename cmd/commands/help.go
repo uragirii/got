@@ -6,7 +6,8 @@ import (
 )
 
 var COMMANDS_HELP_DESC = map[string]string{
-	"init": "Create an empty Git repository",
+	"init":        "Create an empty Git repository",
+	"hash-object": "Compute object ID and optionally create an object from a file",
 }
 
 var FLAGS []string = []string{"-v", "-h"}
