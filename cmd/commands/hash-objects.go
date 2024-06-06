@@ -1,10 +1,9 @@
 package commands
 
 import (
-	"crypto/sha1"
-	"flag"
+	"bytes"
 	"fmt"
-	"os"
+	"sync"
 
 	"github.com/uragirii/got/cmd/internals"
 )
@@ -32,38 +31,39 @@ var HASH_OBJECT *internals.Command = &internals.Command{
 }
 
 func HashObject(c *internals.Command) {
-	filename := flag.Arg(1)
 
-	if filename == "" {
-		return
+	var wg sync.WaitGroup
+	var resultMtx sync.Mutex
+	results := make([]string, len(c.Args))
+	bytesBuffers := make([]*bytes.Buffer, len(c.Args))
+
+	compress := c.GetFlag("write") == "true"
+
+	for idx, arg := range c.Args {
+		wg.Add(1)
+		go func(arg string, idx int) {
+			defer wg.Done()
+			hash, bytesBuffer, err := internals.HashBlob(arg, compress)
+
+			if err != nil {
+				fmt.Println(err)
+				// TODO: better error handing
+				panic("error while hashing object")
+			}
+			resultMtx.Lock()
+			results[idx] = fmt.Sprintf("%x", *hash)
+			if compress {
+				bytesBuffers[idx] = bytesBuffer
+			}
+			resultMtx.Unlock()
+		}(arg, idx)
 	}
 
-	data, err := os.ReadFile(filename)
+	wg.Wait()
+	// TODO: write the objects
 
-	if err != nil {
-		fmt.Println(err)
-		fmt.Println("error while reading file")
-		return
+	for _, result := range results {
+		fmt.Println(result)
 	}
-
-	fmt.Println(c.Args)
-
-	header := []byte(fmt.Sprintf("blob %d\u0000", len(data)))
-
-	contents := append(header, data...)
-
-	hash := fmt.Sprintf("%x", sha1.Sum(contents))
-
-	fmt.Printf("%s\n", hash)
-
-	// var compressBytes bytes.Buffer
-
-	// writer := zlib.NewWriter(&compressBytes)
-
-	// writer.Write(contents)
-
-	// writer.Flush()
-
-	// os.WriteFile("hashed", compressBytes.Bytes(), 0660)
 
 }
