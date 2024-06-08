@@ -33,7 +33,6 @@ var HASH_OBJECT *internals.Command = &internals.Command{
 func HashObject(c *internals.Command) {
 
 	var wg sync.WaitGroup
-	var resultMtx sync.Mutex
 	results := make([]string, len(c.Args))
 	bytesBuffers := make([]*bytes.Buffer, len(c.Args))
 
@@ -50,12 +49,10 @@ func HashObject(c *internals.Command) {
 				// TODO: better error handing
 				panic("error while hashing object")
 			}
-			resultMtx.Lock()
 			results[idx] = fmt.Sprintf("%x", *hash)
 			if compress {
 				bytesBuffers[idx] = bytesBuffer
 			}
-			resultMtx.Unlock()
 		}(arg, idx)
 	}
 
