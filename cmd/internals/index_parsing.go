@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"sync"
 )
 
 var INDEX_FILE_HEADER [4]byte = [4]byte{0x44, 0x49, 0x52, 0x43}
@@ -17,17 +18,46 @@ type IndexFile struct {
 	// mode     uint32
 	// uid      uint32
 	// gid      uint32
-	// size     uint32
-	// sha1     *[20]byte
+	Size uint32
+	SHA1 *[20]byte
 	// flag     uint16
-	// filepath string
+	Filepath string
+	Start    int
+	End      int
 }
 
 func byteSliceToInt(bytesSlice *[]byte) (int64, error) {
 	return strconv.ParseInt(fmt.Sprintf("%x", *bytesSlice), 16, 64)
 }
 
-func ParseIndex(filepath string) (*[]IndexFile, error) {
+func parseIndexEntry(entry *[]byte, start, end int) (*IndexFile, error) {
+	sizeBytes := (*entry)[start+36 : start+40]
+	shaBytes := (*entry)[start+40 : start+60] // SHA1 is 20 bytes
+	filepath := (*entry)[start+62 : end]
+
+	size, err := byteSliceToInt(&sizeBytes)
+
+	if err != nil {
+		return nil, err
+	}
+
+	sha1 := [20]byte{}
+
+	for idx := range len(sha1) {
+		sha1[idx] = shaBytes[idx]
+	}
+
+	return &IndexFile{
+		Size:     uint32(size),
+		SHA1:     &sha1,
+		Filepath: string(filepath),
+		Start:    start,
+		End:      end,
+	}, nil
+
+}
+
+func ParseIndex(filepath string) ([]*IndexFile, error) {
 	contents, err := os.ReadFile(filepath)
 
 	if err != nil {
@@ -68,18 +98,32 @@ func ParseIndex(filepath string) (*[]IndexFile, error) {
 
 	indexEntryLocs := make([]int, numFiles)
 
+	fileEntry := make([]*IndexFile, numFiles)
+
 	currLoc := 0
+
+	var wg sync.WaitGroup
 
 	for currIdx := 0; currIdx < int(numFiles); currIdx++ {
 		// Other stuff is 62 bytes long
-		currLoc += 62
-
 		startLoc := currLoc
+		currLoc += 62
 
 		for ; fileContentsBytes[currLoc] != 0; currLoc++ {
 		}
+		wg.Add(1)
 
-		fmt.Printf("%s\n", fileContentsBytes[startLoc:currLoc])
+		go func(entry *[]byte, start, end, currIdx int) {
+			defer wg.Done()
+			indexFile, err := parseIndexEntry(entry, start, end)
+
+			if err != nil {
+				panic(err)
+			}
+
+			fileEntry[currIdx] = indexFile
+
+		}(&fileContentsBytes, startLoc, currLoc, currIdx)
 
 		for ; fileContentsBytes[currLoc] == 0; currLoc++ {
 		}
@@ -87,6 +131,8 @@ func ParseIndex(filepath string) (*[]IndexFile, error) {
 
 	}
 
-	return nil, nil
+	wg.Wait()
+
+	return fileEntry, nil
 
 }
