@@ -14,6 +14,7 @@ var version string = "0.0.0-pre-alpha"
 var SUPPORTED_COMMANDS []*internals.Command = []*internals.Command{
 	commands.HASH_OBJECT,
 	commands.INIT,
+	commands.LS_FILES,
 }
 
 func main() {
