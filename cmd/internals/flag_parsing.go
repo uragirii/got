@@ -19,7 +19,7 @@ type Command struct {
 	Name       string
 	Desc       string
 	Flags      []*Flag
-	Run        func(c *Command)
+	Run        func(c *Command, root string)
 	Args       []string
 	parsedFlag map[string]string
 }

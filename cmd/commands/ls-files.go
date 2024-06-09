@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"path"
 
 	"github.com/uragirii/got/cmd/internals"
 )
@@ -29,9 +30,15 @@ var LS_FILES *internals.Command = &internals.Command{
 	Run: LsFiles,
 }
 
-func LsFiles(c *internals.Command) {
+func LsFiles(c *internals.Command, rootPath string) {
+
+	if rootPath == "" {
+		fmt.Println("fatal: not a git repository (or any of the parent directories): .git")
+		return
+	}
+
 	// TODO: get root dir of git
-	indexFiles, err := internals.ParseIndex(".git/index")
+	indexFiles, err := internals.ParseIndex(path.Join(rootPath, "index"))
 	if err != nil {
 		fmt.Println(err)
 		return

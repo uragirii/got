@@ -41,6 +41,16 @@ func main() {
 		return
 	}
 
+	cwd, err := os.Getwd()
+
+	if err != nil {
+		panic("error while geting cwd")
+	}
+
+	root, _ := internals.FindRoot(cwd)
+
+	fmt.Println("ROOT", root)
+
 	command := args[0]
 
 	var isValidCmd bool = false
@@ -48,7 +58,7 @@ func main() {
 	for _, cmdDetails := range SUPPORTED_COMMANDS {
 		if cmdDetails.Name == command {
 			cmdDetails.ParseCommand(args[1:])
-			cmdDetails.Run(cmdDetails)
+			cmdDetails.Run(cmdDetails, root)
 			isValidCmd = true
 		}
 	}

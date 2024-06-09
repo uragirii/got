@@ -30,7 +30,7 @@ var HASH_OBJECT *internals.Command = &internals.Command{
 	Run: HashObject,
 }
 
-func HashObject(c *internals.Command) {
+func HashObject(c *internals.Command, _ string) {
 
 	var wg sync.WaitGroup
 	results := make([]string, len(c.Args))

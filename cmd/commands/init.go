@@ -118,7 +118,7 @@ func initFolder(gitPath string) {
 
 }
 
-func Init(_ *internals.Command) {
+func Init(_ *internals.Command, _ string) {
 	cwd, err := os.Getwd()
 
 	if err != nil {
