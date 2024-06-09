@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
 
 	"github.com/uragirii/got/cmd/commands"
 	"github.com/uragirii/got/cmd/internals"
@@ -15,6 +16,7 @@ var SUPPORTED_COMMANDS []*internals.Command = []*internals.Command{
 	commands.HASH_OBJECT,
 	commands.INIT,
 	commands.LS_FILES,
+	commands.STATUS,
 }
 
 func main() {
@@ -48,8 +50,6 @@ func main() {
 	}
 
 	root, _ := internals.FindRoot(cwd)
-
-	fmt.Println("ROOT", root)
 
 	command := args[0]
 
