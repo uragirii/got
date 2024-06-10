@@ -125,8 +125,18 @@ func ParseIndex(filepath string) ([]*IndexFile, error) {
 
 		}(&fileContentsBytes, startLoc, currLoc, currIdx)
 
-		for ; fileContentsBytes[currLoc] == 0; currLoc++ {
-		}
+		// @see https://git-scm.com/docs/index-format
+		// 1-8 nul bytes as necessary to pad the entry to a multiple of eight bytes
+		// while keeping the name NUL-terminated.
+
+		// We need to calculate the padding
+
+		filenameLenBytes := currLoc - startLoc
+
+		padding := 8 - (filenameLenBytes % 8)
+
+		currLoc += padding
+
 		indexEntryLocs[currIdx] = currLoc
 
 	}
