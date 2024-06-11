@@ -17,6 +17,7 @@ var SUPPORTED_COMMANDS []*internals.Command = []*internals.Command{
 	commands.INIT,
 	commands.LS_FILES,
 	commands.STATUS,
+	commands.CAT_FILE,
 }
 
 func main() {
