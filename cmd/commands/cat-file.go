@@ -31,17 +31,10 @@ var CAT_FILE *internals.Command = &internals.Command{
 func CatFile(c *internals.Command, gitDir string) {
 	sha := c.Args[0]
 
-	decoded, err := internals.DecodeHash(gitDir, sha)
+	objType, content, err := internals.ReadGitObject(gitDir, sha)
 
 	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	objType, content := internals.GetObj(decoded)
-
-	if content == nil {
-		panic("no content found")
+		panic(err)
 	}
 
 	if c.GetFlag("type") == "true" {
