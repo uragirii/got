@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 	"sync"
 
 	"github.com/uragirii/got/cmd/internals"
@@ -81,20 +82,18 @@ func Status(c *internals.Command, gitPath string) {
 	filesChan := make(chan string, 10)
 	rootDir := path.Join(gitPath, "..")
 
-	indexedFiles, err := internals.ParseIndex(path.Join(gitPath, "index"))
+	var gitIndex internals.GitIndex
+
+	err := gitIndex.New(gitPath)
 
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	files := make([]string, 0, len(indexedFiles))
+	possibleNumFiles := len(gitIndex.GetTrackedFiles())
 
-	indexedFilesMap := make(map[string]*internals.IndexFile, len(indexedFiles))
-
-	for _, f := range indexedFiles {
-		indexedFilesMap[path.Join(rootDir, f.Filepath)] = f
-	}
+	files := make([]string, 0, possibleNumFiles)
 
 	var wg sync.WaitGroup
 
@@ -108,7 +107,11 @@ func Status(c *internals.Command, gitPath string) {
 	}()
 
 	for file := range filesChan {
-		files = append(files, file)
+		relPath, err := filepath.Rel(rootDir, file)
+		if err != nil {
+			panic(err)
+		}
+		files = append(files, relPath)
 	}
 
 	created := make([]string, 0, 10)
@@ -118,7 +121,7 @@ func Status(c *internals.Command, gitPath string) {
 
 	for _, file := range files {
 
-		if indexedFilesMap[file] != nil {
+		if gitIndex.Has(file) {
 			fwg.Add(1)
 			go func(file string) {
 				defer fwg.Done()
@@ -127,7 +130,7 @@ func Status(c *internals.Command, gitPath string) {
 					fmt.Println(err)
 				}
 
-				if string(sha[:]) != string((*indexedFilesMap[file]).SHA1[:]) {
+				if string(sha[:]) != string((*gitIndex.Get(file)).SHA1[:]) {
 					changeChan <- file
 				}
 

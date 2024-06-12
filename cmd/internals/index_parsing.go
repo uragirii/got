@@ -3,6 +3,7 @@ package internals
 import (
 	"fmt"
 	"os"
+	"path"
 	"strconv"
 	"sync"
 )
@@ -57,19 +58,24 @@ func parseIndexEntry(entry *[]byte, start, end int) (*IndexFile, error) {
 
 }
 
-func ParseIndex(filepath string) ([]*IndexFile, error) {
-	contents, err := os.ReadFile(filepath)
+type GitIndex struct {
+	entries []*IndexFile
+	fileMap map[string]*IndexFile
+}
+
+func (i *GitIndex) New(gitDir string) error {
+	contents, err := os.ReadFile(path.Join(gitDir, "index"))
 
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if len(contents) == 0 {
-		return nil, fmt.Errorf("empty index file")
+		return fmt.Errorf("empty index file")
 	}
 
 	if len(contents) < 8 {
-		return nil, fmt.Errorf("file has invalid length")
+		return fmt.Errorf("file has invalid length")
 	}
 
 	header := contents[0:4]
@@ -78,20 +84,20 @@ func ParseIndex(filepath string) ([]*IndexFile, error) {
 
 	for idx, b := range INDEX_FILE_HEADER {
 		if header[idx] != b {
-			return nil, fmt.Errorf("invalid header")
+			return fmt.Errorf("invalid header")
 		}
 	}
 
 	for idx, b := range SUPPORTED_VERSION {
 		if fileversion[idx] != b {
-			return nil, fmt.Errorf("%d version not supported", fileversion)
+			return fmt.Errorf("%d version not supported", fileversion)
 		}
 	}
 
 	numFiles, err := byteSliceToInt(&numFilesBytes)
 
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	fileContentsBytes := contents[12:]
@@ -101,6 +107,8 @@ func ParseIndex(filepath string) ([]*IndexFile, error) {
 	fileEntry := make([]*IndexFile, numFiles)
 
 	currLoc := 0
+
+	i.fileMap = make(map[string]*IndexFile, numFiles)
 
 	var wg sync.WaitGroup
 
@@ -122,6 +130,7 @@ func ParseIndex(filepath string) ([]*IndexFile, error) {
 			}
 
 			fileEntry[currIdx] = indexFile
+			i.fileMap[indexFile.Filepath] = indexFile
 
 		}(&fileContentsBytes, startLoc, currLoc, currIdx)
 
@@ -143,6 +152,19 @@ func ParseIndex(filepath string) ([]*IndexFile, error) {
 
 	wg.Wait()
 
-	return fileEntry, nil
+	i.entries = fileEntry
 
+	return nil
+}
+
+func (i *GitIndex) Has(filePath string) bool {
+	return i.fileMap[filePath] != nil
+}
+
+func (i *GitIndex) Get(filePath string) *IndexFile {
+	return i.fileMap[filePath]
+}
+
+func (i *GitIndex) GetTrackedFiles() []*IndexFile {
+	return i.entries
 }
