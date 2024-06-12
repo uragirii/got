@@ -75,7 +75,7 @@ func Status(c *internals.Command, gitPath string) {
 		return
 	}
 
-	fmt.Println(internals.GetTreeHash(path.Join(gitPath, "..", "commands")))
+	fmt.Println(internals.GetTreeHash(path.Join(gitPath, "..", "cmd", "commands")))
 
 	// This 10 would also force to only run 10 goroutines at a time (Hopefully)
 	// filesChan := make(chan string, 10)
