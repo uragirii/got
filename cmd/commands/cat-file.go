@@ -28,6 +28,49 @@ var CAT_FILE *internals.Command = &internals.Command{
 	Run: CatFile,
 }
 
+func printObj(obj *[]byte) {
+	fmt.Println(string(*obj))
+}
+
+func printTree(obj *[]byte, gitDir string) {
+	for idx := 0; idx < len(*obj); {
+		modeStartIdx := idx
+		for ; (*obj)[idx] != 0x20; idx++ {
+		}
+
+		mode := string((*obj)[modeStartIdx:idx])
+
+		if mode == "40000" {
+			mode = "040000"
+		}
+
+		nameStartIdx := idx
+
+		for ; (*obj)[idx] != 0x00; idx++ {
+		}
+
+		name := string((*obj)[nameStartIdx:idx])
+
+		// get over the \0
+		idx++
+
+		sha := (*obj)[idx : idx+20]
+
+		idx += 20
+
+		shaStr := fmt.Sprintf("%x", sha)
+
+		objType, _, err := internals.ReadGitObject(gitDir, shaStr)
+
+		if err != nil {
+			panic(err)
+		}
+
+		fmt.Printf("%s %s %s\t%s\n", mode, objType, shaStr, name)
+
+	}
+}
+
 func CatFile(c *internals.Command, gitDir string) {
 	sha := c.Args[0]
 
@@ -42,6 +85,15 @@ func CatFile(c *internals.Command, gitDir string) {
 		return
 	}
 
-	fmt.Println(string(*content))
+	if c.GetFlag("pretty") == "true" {
+		switch objType {
+		case "blob":
+			printObj(content)
+		case "tree":
+			printTree(content, gitDir)
+		}
+	} else {
+		fmt.Println(string(*content))
+	}
 
 }
