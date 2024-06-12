@@ -81,14 +81,20 @@ func Status(c *internals.Command, gitPath string) {
 	filesChan := make(chan string, 10)
 	rootDir := path.Join(gitPath, "..")
 
-	// indexedFiles, err := internals.ParseIndex(path.Join(gitPath, "index"))
+	indexedFiles, err := internals.ParseIndex(path.Join(gitPath, "index"))
 
-	// if err != nil {
-	// 	fmt.Println(err)
-	// 	return
-	// }
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
-	// files := make([]string, 0, len(indexedFiles))
+	files := make([]string, 0, len(indexedFiles))
+
+	indexedFilesMap := make(map[string]*internals.IndexFile, len(indexedFiles))
+
+	for _, f := range indexedFiles {
+		indexedFilesMap[path.Join(rootDir, f.Filepath)] = f
+	}
 
 	var wg sync.WaitGroup
 
@@ -102,7 +108,45 @@ func Status(c *internals.Command, gitPath string) {
 	}()
 
 	for file := range filesChan {
-		fmt.Println(file)
+		files = append(files, file)
+	}
+
+	created := make([]string, 0, 10)
+	changeChan := make(chan string, 10)
+
+	var fwg sync.WaitGroup
+
+	for _, file := range files {
+
+		if indexedFilesMap[file] != nil {
+			fwg.Add(1)
+			go func(file string) {
+				defer fwg.Done()
+				sha, _, err := internals.HashBlob(file, false)
+				if err != nil {
+					fmt.Println(err)
+				}
+
+				if string(sha[:]) != string((*indexedFilesMap[file]).SHA1[:]) {
+					changeChan <- file
+				}
+
+			}(file)
+		} else {
+			created = append(created, file)
+		}
+	}
+	go func() {
+		fwg.Wait()
+		close(changeChan)
+	}()
+
+	for changedF := range changeChan {
+		fmt.Println("Changed", changedF)
+	}
+
+	for _, newF := range created {
+		fmt.Println("Created", newF)
 	}
 
 }
