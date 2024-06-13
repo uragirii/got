@@ -185,7 +185,7 @@ func GetObj(decodedBytes *[]byte) (string, *[]byte) {
 	headerSplitIdx := GetObjHeaderEnd(decodedBytes)
 
 	header := (*decodedBytes)[:headerSplitIdx]
-	content := (*decodedBytes)[headerSplitIdx:]
+	content := (*decodedBytes)[headerSplitIdx+1:]
 
 	for idx, b := range header {
 		if b == 0x20 {
