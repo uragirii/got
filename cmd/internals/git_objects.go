@@ -2,8 +2,8 @@ package internals
 
 import "fmt"
 
-func ReadGitObject(gitDir string, hash string) (string, *[]byte, error) {
-	decoded, err := DecodeHash(gitDir, hash)
+func ReadGitObject(hash string) (string, *[]byte, error) {
+	decoded, err := DecodeHash(hash)
 
 	if err != nil {
 		return "", nil, err

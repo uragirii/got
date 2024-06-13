@@ -32,7 +32,7 @@ func printObj(obj *[]byte) {
 	fmt.Println(string(*obj))
 }
 
-func printTree(obj *[]byte, gitDir string) {
+func printTree(obj *[]byte) {
 	for idx := 0; idx < len(*obj); {
 		modeStartIdx := idx
 		for ; (*obj)[idx] != 0x20; idx++ {
@@ -60,7 +60,7 @@ func printTree(obj *[]byte, gitDir string) {
 
 		shaStr := fmt.Sprintf("%x", sha)
 
-		objType, _, err := internals.ReadGitObject(gitDir, shaStr)
+		objType, _, err := internals.ReadGitObject(shaStr)
 
 		if err != nil {
 			panic(err)
@@ -74,7 +74,7 @@ func printTree(obj *[]byte, gitDir string) {
 func CatFile(c *internals.Command, gitDir string) {
 	sha := c.Args[0]
 
-	objType, content, err := internals.ReadGitObject(gitDir, sha)
+	objType, content, err := internals.ReadGitObject(sha)
 
 	if err != nil {
 		panic(err)
@@ -90,7 +90,7 @@ func CatFile(c *internals.Command, gitDir string) {
 		case "blob":
 			printObj(content)
 		case "tree":
-			printTree(content, gitDir)
+			printTree(content)
 		}
 	} else {
 		fmt.Println(string(*content))

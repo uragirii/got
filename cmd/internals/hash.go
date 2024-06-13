@@ -14,6 +14,8 @@ import (
 	"strings"
 )
 
+const OBJECTS_PATH = "objects"
+
 func HashBlob(path string, compress bool) (*[20]byte, *bytes.Buffer, error) {
 	data, err := os.ReadFile(path)
 
@@ -123,11 +125,17 @@ func HashTree(tree *dirTree) (*[20]byte, error) {
 	return &hash, nil
 }
 
-func DecodeHash(gitDir string, hash string) (*[]byte, error) {
+func DecodeHash(hash string) (*[]byte, error) {
 	folder := hash[0:2]
 	hashFile := hash[2:]
 
-	files, err := os.ReadDir(path.Join(gitDir, "objects", folder))
+	gitDir, err := GetGitDir()
+
+	if err != nil {
+		return nil, err
+	}
+
+	files, err := os.ReadDir(path.Join(gitDir, OBJECTS_PATH, folder))
 
 	if err != nil {
 		return nil, err
@@ -135,7 +143,7 @@ func DecodeHash(gitDir string, hash string) (*[]byte, error) {
 
 	for _, file := range files {
 		if strings.HasPrefix(file.Name(), hashFile) || file.Name() == hashFile {
-			contents, err := os.ReadFile(path.Join(gitDir, "objects", folder, file.Name()))
+			contents, err := os.ReadFile(path.Join(gitDir, OBJECTS_PATH, folder, file.Name()))
 
 			if err != nil {
 				return nil, err
