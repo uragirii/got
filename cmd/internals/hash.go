@@ -4,10 +4,13 @@ import (
 	"bytes"
 	"compress/zlib"
 	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
 	"path"
+	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -43,6 +46,81 @@ func HashBlob(path string, compress bool) (*[20]byte, *bytes.Buffer, error) {
 
 	return &hash, &compressBytes, nil
 
+}
+
+func HashTree(tree *dirTree) (*[20]byte, error) {
+
+	items := make([]string, 0, len(tree.childFiles)+len(tree.childDirs))
+
+	for file := range tree.childFiles {
+		relPath, _ := filepath.Rel(tree.Path, file)
+
+		items = append(items, relPath)
+	}
+	for subdir := range tree.childDirs {
+		relPath, _ := filepath.Rel(tree.Path, subdir)
+
+		items = append(items, relPath)
+	}
+
+	slices.Sort(items)
+
+	var content strings.Builder
+
+	for _, item := range items {
+		absPath := path.Join(tree.Path, item)
+
+		if tree.childFiles[absPath] != nil {
+			// is file
+			// get blob
+			fileInfo, err := os.Stat(absPath)
+
+			if err != nil {
+				return nil, err
+			}
+
+			mode := "100644"
+
+			if !fileInfo.Mode().IsRegular() {
+				mode = "100755"
+			}
+
+			content.WriteString(fmt.Sprintf("%s %s\u0000", mode, item))
+
+			decodedSha, err := hex.DecodeString(tree.childFiles[absPath].SHA)
+
+			if err != nil {
+				return nil, err
+			}
+			for _, b := range decodedSha {
+				content.WriteByte(b)
+			}
+
+		} else {
+			// is folder
+			mode := "40000"
+			content.WriteString(fmt.Sprintf("%s %s\u0000", mode, item))
+
+			decodedSha, err := hex.DecodeString(tree.childDirs[absPath].SHA)
+
+			if err != nil {
+				return nil, err
+			}
+			for _, b := range decodedSha {
+				content.WriteByte(b)
+			}
+		}
+	}
+
+	contentLen := content.Len()
+
+	header := []byte(fmt.Sprintf("tree %d\u0000", contentLen))
+
+	contentBytes := append(header, []byte(content.String())...)
+
+	hash := sha1.Sum(contentBytes)
+
+	return &hash, nil
 }
 
 func DecodeHash(gitDir string, hash string) (*[]byte, error) {
