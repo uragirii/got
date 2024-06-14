@@ -130,7 +130,6 @@ func (i *GitIndex) New(gitDir string) error {
 			}
 
 			fileEntry[currIdx] = indexFile
-			i.fileMap[indexFile.Filepath] = indexFile
 
 		}(&fileContentsBytes, startLoc, currLoc, currIdx)
 
@@ -151,6 +150,10 @@ func (i *GitIndex) New(gitDir string) error {
 	}
 
 	wg.Wait()
+
+	for _, indexFile := range fileEntry {
+		i.fileMap[indexFile.Filepath] = indexFile
+	}
 
 	i.entries = fileEntry
 
