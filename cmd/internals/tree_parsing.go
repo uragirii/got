@@ -67,41 +67,41 @@ func getDirHash(dirPath string, gitIgnore *GitIgnore) (*dirTree, error) {
 
 	for _, file := range files {
 		if !gitIgnore.Match(file) {
-			wg.Add(1)
-			go func(file string) {
-				defer wg.Done()
-				fileSHA, _, err := HashBlob(file, false)
+			// wg.Add(1)
+			// go func(file string) {
+			// defer wg.Done()
+			fileSHA, _, err := HashBlob(file, false)
 
-				if err != nil {
-					fmt.Printf("error while hashing %s", file)
-					panic(err)
-				}
+			if err != nil {
+				fmt.Printf("error while hashing %s", file)
+				panic(err)
+			}
 
-				dirHash.childFiles[file] = &fileHash{
-					Path: file,
-					SHA:  fmt.Sprintf("%x", *fileSHA),
-				}
-			}(file)
+			dirHash.childFiles[file] = &fileHash{
+				Path: file,
+				SHA:  fmt.Sprintf("%x", *fileSHA),
+			}
+			// }(file)
 		}
 	}
 
 	for _, dir := range dirs {
 		if !gitIgnore.Match(dir) {
-			wg.Add(1)
-			go func(dirpath string) {
-				defer wg.Done()
-				subDirHash, err := getDirHash(dirpath, gitIgnore)
+			// wg.Add(1)
+			// go func(dirpath string) {
+			// defer wg.Done()
+			subDirHash, err := getDirHash(dir, gitIgnore)
 
-				subDirHash.Parent = dirHash
+			subDirHash.Parent = dirHash
 
-				if err != nil {
-					fmt.Printf("error while hashing %s", dirpath)
-					panic(err)
-				}
+			if err != nil {
+				fmt.Printf("error while hashing %s", dir)
+				panic(err)
+			}
 
-				dirHash.childDirs[dirpath] = subDirHash
+			dirHash.childDirs[dir] = subDirHash
 
-			}(dir)
+			// }(dir)
 		}
 	}
 
@@ -119,7 +119,7 @@ func getDirHash(dirPath string, gitIgnore *GitIgnore) (*dirTree, error) {
 	return dirHash, nil
 }
 
-func GetTreeHash(rootDir string) string {
+func GetTreeHash(rootDir string) *dirTree {
 
 	var gitIgnore GitIgnore
 
@@ -128,6 +128,6 @@ func GetTreeHash(rootDir string) string {
 	if err != nil {
 		panic(err)
 	}
-	return dirHash.SHA
+	return dirHash
 
 }

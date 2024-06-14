@@ -2,12 +2,73 @@ package internals
 
 import (
 	"fmt"
+	"path"
 	"strings"
 	"time"
 )
 
+type GitTreeFile struct {
+	Name string
+	SHA  string
+}
+
 type GitTree struct {
-	SHA string
+	SHA      string
+	Path     string
+	Files    map[string]*GitTreeFile
+	SubTrees map[string]*GitTree
+}
+
+func (gt *GitTree) LoadChildren() {
+	objType, contentBytes, err := ReadGitObject(gt.SHA)
+
+	if err != nil {
+		panic(err)
+	}
+
+	if objType != "tree" {
+		panic("invalid sha hash for tree")
+	}
+
+	// TODO: tweak this value for perf
+	gt.Files = make(map[string]*GitTreeFile)
+	gt.SubTrees = make(map[string]*GitTree)
+
+	for idx := 0; idx < len(*contentBytes); {
+		modeStartIdx := idx
+		for ; (*contentBytes)[idx] != ' '; idx++ {
+		}
+
+		mode := string((*contentBytes)[modeStartIdx:idx])
+
+		isDir := mode == "40000"
+
+		idx++
+		nameStartIdx := idx
+		for ; (*contentBytes)[idx] != 0x00; idx++ {
+		}
+
+		name := (*contentBytes)[nameStartIdx:idx]
+		idx++
+
+		sha := (*contentBytes)[idx : idx+20]
+
+		idx += 20
+
+		if isDir {
+			gt.SubTrees[path.Join(gt.Path, string(name))] = &GitTree{
+				Path: path.Join(gt.Path, string(name)),
+				SHA:  fmt.Sprintf("%x", sha),
+			}
+		} else {
+
+			gt.Files[path.Join(gt.Path, string(name))] = &GitTreeFile{
+				Name: string(name),
+				SHA:  fmt.Sprintf("%x", sha),
+			}
+		}
+	}
+
 }
 
 type GitPerson struct {
@@ -27,8 +88,6 @@ const TREE_PREFIX string = "tree "
 const PARENT_PREFIX string = "parent "
 
 func parseTreeLine(treeLine string) (*GitTree, error) {
-
-	fmt.Println(strings.HasPrefix(treeLine, TREE_PREFIX))
 
 	if !(strings.HasPrefix(treeLine, TREE_PREFIX)) {
 		return nil, fmt.Errorf("invalid commit file tree")
@@ -80,6 +139,12 @@ func ParseCommit(sha string) (*GitCommit, error) {
 	if err != nil {
 		return nil, err
 	}
+	gitDir, err := GetGitDir()
+	if err != nil {
+		return nil, err
+	}
+
+	tree.Path = path.Join(gitDir, "..")
 
 	parentSha, err := parseParentSha(lines[1])
 
