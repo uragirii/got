@@ -1,4 +1,4 @@
-package commands
+package cmd
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"path"
 	"sync"
 
-	"github.com/uragirii/got/cmd/internals"
+	"github.com/uragirii/got/internals"
 )
 
 var INIT *internals.Command = &internals.Command{

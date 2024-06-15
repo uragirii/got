@@ -1,9 +1,9 @@
-package commands
+package cmd
 
 import (
 	"fmt"
 
-	"github.com/uragirii/got/cmd/internals"
+	"github.com/uragirii/got/internals"
 )
 
 var CAT_FILE *internals.Command = &internals.Command{

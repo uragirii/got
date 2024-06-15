@@ -1,10 +1,11 @@
-package cmd
+package main
 
 import (
 	"flag"
 	"fmt"
 	"os"
 
+	"github.com/uragirii/got/cmd"
 	"github.com/uragirii/got/internals"
 )
 
@@ -12,11 +13,11 @@ import (
 var version string = "0.0.0-pre-alpha"
 
 var SUPPORTED_COMMANDS []*internals.Command = []*internals.Command{
-	HASH_OBJECT,
-	INIT,
-	LS_FILES,
-	STATUS,
-	CAT_FILE,
+	cmd.HASH_OBJECT,
+	cmd.INIT,
+	cmd.LS_FILES,
+	cmd.STATUS,
+	cmd.CAT_FILE,
 }
 
 func main() {
@@ -32,7 +33,7 @@ func main() {
 	}
 
 	if *isHelp {
-		Help()
+		cmd.Help()
 		return
 	}
 

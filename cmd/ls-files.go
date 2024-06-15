@@ -1,9 +1,9 @@
-package commands
+package cmd
 
 import (
 	"fmt"
 
-	"github.com/uragirii/got/cmd/internals"
+	"github.com/uragirii/got/internals"
 )
 
 var LS_FILES *internals.Command = &internals.Command{

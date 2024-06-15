@@ -4,4 +4,4 @@ run:
 	go run ./cmd/main.go
 
 got: $(SOURCES)
-	go build -o build/got cmd/main.go
+	go build -o build/got

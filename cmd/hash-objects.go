@@ -1,11 +1,11 @@
-package commands
+package cmd
 
 import (
 	"bytes"
 	"fmt"
 	"sync"
 
-	"github.com/uragirii/got/cmd/internals"
+	"github.com/uragirii/got/internals"
 )
 
 var HASH_OBJECT *internals.Command = &internals.Command{

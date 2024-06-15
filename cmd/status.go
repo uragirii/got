@@ -1,11 +1,11 @@
-package commands
+package cmd
 
 import (
 	"fmt"
 	"path"
 	"path/filepath"
 
-	"github.com/uragirii/got/cmd/internals"
+	"github.com/uragirii/got/internals"
 )
 
 var STATUS *internals.Command = &internals.Command{
