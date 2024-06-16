@@ -21,7 +21,6 @@ var SUPPORTED_COMMANDS []*internals.Command = []*internals.Command{
 }
 
 func main() {
-
 	isVersion := flag.Bool("v", false, "version")
 	isHelp := flag.Bool("h", false, "help")
 
@@ -40,7 +39,7 @@ func main() {
 	args := flag.Args()
 
 	if len(args) == 0 {
-		fmt.Println("no arguments were provided")
+		cmd.Help()
 		return
 	}
 
