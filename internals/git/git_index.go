@@ -39,7 +39,7 @@ type IndexEntry struct {
 	Filepath string
 }
 
-func marshalIndexEntry(entry *[]byte, start, end int) (*IndexEntry, error) {
+func unmarshalIndexEntry(entry *[]byte, start, end int) (*IndexEntry, error) {
 	sizeBytes := (*entry)[start+_IndexEntrySizeLoc : start+_IndexEntrySizeLoc+4]
 
 	shaBytes := (*entry)[start+_IndexEntrySHALoc : start+_IndexEntrySHALoc+20] // SHA is 20 bytes
@@ -77,7 +77,7 @@ func byteSliceToInt(bytesSlice *[]byte) (int64, error) {
 	return strconv.ParseInt(fmt.Sprintf("%x", *bytesSlice), 16, 64)
 }
 
-func MarshallGitIndex() (*GitIndex, error) {
+func UnmarshallGitIndex() (*GitIndex, error) {
 	gitDir, err := internals.GetGitDir()
 
 	if err != nil {
@@ -143,7 +143,7 @@ func MarshallGitIndex() (*GitIndex, error) {
 		go func(currFileIdx, idx int) {
 			defer wg.Done()
 
-			indexEntry, err := marshalIndexEntry(&actualContent, startLoc, idx)
+			indexEntry, err := unmarshalIndexEntry(&actualContent, startLoc, idx)
 
 			// TODO: handle errors inside goroutines
 			if err != nil {

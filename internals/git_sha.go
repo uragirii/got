@@ -26,7 +26,7 @@ func SHAFromString(shaStr string) (*SHA, error) {
 	return SHAFromByteSlice(&byteSlice)
 }
 
-func (sha *SHA) UnmarshallToStr() string {
+func (sha *SHA) MarshallToStr() string {
 	return fmt.Sprintf("%x", *sha.hash)
 }
 
