@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/uragirii/got/internals"
+	"github.com/uragirii/got/internals/git/object"
 )
 
 var CAT_FILE *internals.Command = &internals.Command{
@@ -28,72 +29,69 @@ var CAT_FILE *internals.Command = &internals.Command{
 	Run: CatFile,
 }
 
-func printObj(obj *[]byte) {
-	fmt.Println(string(*obj))
-}
+// func printTree(obj *[]byte) {
+// 	for idx := 0; idx < len(*obj); {
+// 		modeStartIdx := idx
+// 		for ; (*obj)[idx] != 0x20; idx++ {
+// 		}
 
-func printTree(obj *[]byte) {
-	for idx := 0; idx < len(*obj); {
-		modeStartIdx := idx
-		for ; (*obj)[idx] != 0x20; idx++ {
-		}
+// 		mode := string((*obj)[modeStartIdx:idx])
 
-		mode := string((*obj)[modeStartIdx:idx])
+// 		if mode == "40000" {
+// 			mode = "040000"
+// 		}
 
-		if mode == "40000" {
-			mode = "040000"
-		}
+// 		nameStartIdx := idx
 
-		nameStartIdx := idx
+// 		for ; (*obj)[idx] != 0x00; idx++ {
+// 		}
 
-		for ; (*obj)[idx] != 0x00; idx++ {
-		}
+// 		name := string((*obj)[nameStartIdx:idx])
 
-		name := string((*obj)[nameStartIdx:idx])
+// 		// get over the \0
+// 		idx++
 
-		// get over the \0
-		idx++
+// 		sha := (*obj)[idx : idx+20]
 
-		sha := (*obj)[idx : idx+20]
+// 		idx += 20
 
-		idx += 20
+// 		shaStr := fmt.Sprintf("%x", sha)
 
-		shaStr := fmt.Sprintf("%x", sha)
+// 		objType, _, err := internals.ReadGitObject(shaStr)
 
-		objType, _, err := internals.ReadGitObject(shaStr)
+// 		if err != nil {
+// 			panic(err)
+// 		}
 
-		if err != nil {
-			panic(err)
-		}
+// 		fmt.Printf("%s %s %s\t%s\n", mode, objType, shaStr, name)
 
-		fmt.Printf("%s %s %s\t%s\n", mode, objType, shaStr, name)
-
-	}
-}
+// 	}
+// }
 
 func CatFile(c *internals.Command, gitDir string) {
-	sha := c.Args[0]
+	argSha := c.Args[0]
 
-	objType, content, err := internals.ReadGitObject(sha)
+	sha, err := internals.SHAFromString(argSha)
+
+	if err != nil {
+		panic(err)
+	}
+
+	obj, err := object.UnmarshallGitObject(sha)
 
 	if err != nil {
 		panic(err)
 	}
 
 	if c.GetFlag("type") == "true" {
-		fmt.Println(objType)
+		fmt.Println(obj.GetObjType())
 		return
 	}
 
 	if c.GetFlag("pretty") == "true" {
-		switch objType {
-		case "blob":
-			printObj(content)
-		case "tree":
-			printTree(content)
-		}
+		fmt.Println(obj)
 	} else {
-		fmt.Println(string(*content))
+		fmt.Println(obj.RawString())
 	}
 
 }

@@ -67,12 +67,28 @@ func UnmarshallGitObject(sha *internals.SHA) (*GitObject, error) {
 	}, nil
 }
 
+func (obj *GitObject) getContentWithoutHeader() *[]byte {
+	for i := 0; i < len(*obj.uncompressedContents); i++ {
+		if (*obj.uncompressedContents)[i] == '\u0000' {
+			contents := (*obj.uncompressedContents)[i+1:]
+			return &contents
+		}
+	}
+
+	return nil
+}
+
+// TODO:
+// Pretty print the obj
 func (obj *GitObject) String() string {
-	return fmt.Sprintf("%s", *(obj.uncompressedContents))
+	if obj.objectType != BlobObj {
+		panic("pretty print not implemented")
+	}
+	return fmt.Sprint(string(*obj.getContentWithoutHeader()))
 }
 
 func (obj *GitObject) RawString() string {
-	return fmt.Sprintf("%s", *(obj.uncompressedContents))
+	return fmt.Sprint(string(*(obj.getContentWithoutHeader())))
 }
 
 func (obj *GitObject) GetObjType() GitObjectType {
