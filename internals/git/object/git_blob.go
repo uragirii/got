@@ -69,7 +69,7 @@ func MarshalGitBlobFromFile(filePath string) (*GitBlob, error) {
 		return nil, err
 	}
 
-	header := []byte(fmt.Sprint(_GitBlobHeader, len(fileContents)))
+	header := []byte(fmt.Sprintf(_GitBlobHeader, len(fileContents)))
 
 	blobContents := append(header, fileContents...)
 

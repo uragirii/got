@@ -1,11 +1,11 @@
 package cmd
 
 import (
-	"bytes"
 	"fmt"
 	"sync"
 
 	"github.com/uragirii/got/internals"
+	"github.com/uragirii/got/internals/git/object"
 )
 
 var HASH_OBJECT *internals.Command = &internals.Command{
@@ -34,7 +34,6 @@ func HashObject(c *internals.Command, _ string) {
 
 	var wg sync.WaitGroup
 	results := make([]string, len(c.Args))
-	bytesBuffers := make([]*bytes.Buffer, len(c.Args))
 
 	compress := c.GetFlag("write") == "true"
 
@@ -42,22 +41,23 @@ func HashObject(c *internals.Command, _ string) {
 		wg.Add(1)
 		go func(arg string, idx int) {
 			defer wg.Done()
-			hash, bytesBuffer, err := internals.HashBlob(arg, compress)
+
+			obj, err := object.NewGitObject(arg)
 
 			if err != nil {
-				fmt.Println(err)
-				// TODO: better error handing
-				panic("error while hashing object")
+				panic(err)
 			}
-			results[idx] = fmt.Sprintf("%x", *hash)
+
+			results[idx] = obj.GetSHA().MarshallToStr()
+
 			if compress {
-				bytesBuffers[idx] = bytesBuffer
+				obj.Write()
 			}
+
 		}(arg, idx)
 	}
 
 	wg.Wait()
-	// TODO: write the objects
 
 	for _, result := range results {
 		fmt.Println(result)
