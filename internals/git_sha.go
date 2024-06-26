@@ -9,6 +9,16 @@ type SHA struct {
 	hash *[]byte
 }
 
+func (sha *SHA) Eq(other *SHA) bool {
+	for i, b := range *sha.hash {
+		if (*other.hash)[i] != b {
+			return false
+		}
+	}
+
+	return true
+}
+
 func SHAFromByteSlice(byteSlice *[]byte) (*SHA, error) {
 
 	return &SHA{

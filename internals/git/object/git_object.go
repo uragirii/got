@@ -133,8 +133,6 @@ func NewGitObject(filePath string) (*GitObject, error) {
 
 	contents := append(header, data...)
 
-	fmt.Println(string(contents))
-
 	hash := sha1.Sum(contents)
 
 	hashSlice := hash[:]

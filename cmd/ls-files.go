@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"github.com/uragirii/got/internals"
+	"github.com/uragirii/got/internals/git"
+	"github.com/uragirii/got/internals/git/object"
 )
 
 var LS_FILES *internals.Command = &internals.Command{
@@ -29,35 +31,27 @@ var LS_FILES *internals.Command = &internals.Command{
 	Run: LsFiles,
 }
 
-func LsFiles(c *internals.Command, gitDir string) {
+func LsFiles(c *internals.Command, _ string) {
 
-	if gitDir == "" {
-		fmt.Println("fatal: not a git repository (or any of the parent directories): .git")
-		return
-	}
-
-	var gitIndex internals.GitIndex
-
-	err := gitIndex.New(gitDir)
+	gitIndex, err := git.UnmarshallGitIndex()
 
 	if err != nil {
-		fmt.Println(err)
-		return
+		panic(err)
 	}
 
-	for _, file := range gitIndex.GetTrackedFiles() {
+	for _, entry := range gitIndex.GetTrackedFiles() {
 		if c.GetFlag("modified") == "true" {
-			currSha, _, err := internals.HashBlob(file.Filepath, false)
+			obj, err := object.NewGitObject(entry.Filepath)
 
 			if err != nil {
 				panic(err)
 			}
 
-			if string((*currSha)[:]) != string((*file.SHA1)[:]) {
-				fmt.Println(file.Filepath)
+			if !obj.GetSHA().Eq(entry.SHA) {
+				fmt.Println(entry.Filepath)
 			}
 		} else {
-			fmt.Println(file.Filepath)
+			fmt.Println(entry.Filepath)
 		}
 	}
 }

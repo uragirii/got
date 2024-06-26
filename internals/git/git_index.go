@@ -97,7 +97,7 @@ func UnmarshallGitIndex() (*GitIndex, error) {
 	// Confirm header and version are correct
 
 	headerBytes := fileContents[:len(_IndexFileHeader)]
-	fileVersionBytes := fileContents[len(_IndexFileHeader):len(_IndexFileSupportedVersion)]
+	fileVersionBytes := fileContents[len(_IndexFileHeader) : len(_IndexFileHeader)+len(_IndexFileSupportedVersion)]
 
 	for idx, b := range _IndexFileHeader {
 		if headerBytes[idx] != b {
