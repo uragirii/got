@@ -1,4 +1,4 @@
-package internals
+package git
 
 import (
 	"encoding/hex"

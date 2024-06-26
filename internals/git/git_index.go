@@ -34,7 +34,7 @@ type IndexEntry struct {
 	// uid      uint32
 	// gid      uint32
 	Size uint32
-	SHA  *internals.SHA
+	SHA  *SHA
 	// flag     uint16
 	Filepath string
 }
@@ -52,7 +52,7 @@ func unmarshalIndexEntry(entry *[]byte, start, end int) (*IndexEntry, error) {
 		return nil, err
 	}
 
-	sha, err := internals.SHAFromByteSlice(&shaBytes)
+	sha, err := SHAFromByteSlice(&shaBytes)
 	if err != nil {
 		return nil, err
 	}

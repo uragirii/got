@@ -11,6 +11,7 @@ import (
 	"slices"
 
 	"github.com/uragirii/got/internals"
+	"github.com/uragirii/got/internals/git"
 )
 
 type GitObjectType string
@@ -32,10 +33,10 @@ type GitObject struct {
 	objectType GitObjectType
 	// Also contains header for the object
 	uncompressedContents *[]byte
-	sha                  *internals.SHA
+	sha                  *git.SHA
 }
 
-func UnmarshallGitObject(sha *internals.SHA) (*GitObject, error) {
+func UnmarshallGitObject(sha *git.SHA) (*GitObject, error) {
 	objPath, err := getObjectPath(sha)
 
 	if err != nil {
@@ -118,7 +119,7 @@ func (obj *GitObject) Write() error {
 
 }
 
-func (obj *GitObject) GetSHA() *internals.SHA {
+func (obj *GitObject) GetSHA() *git.SHA {
 	return obj.sha
 }
 
@@ -137,7 +138,7 @@ func NewGitObject(filePath string) (*GitObject, error) {
 
 	hashSlice := hash[:]
 
-	sha, err := internals.SHAFromByteSlice(&hashSlice)
+	sha, err := git.SHAFromByteSlice(&hashSlice)
 
 	if err != nil {
 		return nil, err
@@ -150,7 +151,7 @@ func NewGitObject(filePath string) (*GitObject, error) {
 	}, nil
 }
 
-func getObjectPath(sha *internals.SHA) (string, error) {
+func getObjectPath(sha *git.SHA) (string, error) {
 	gitDir, err := internals.GetGitDir()
 
 	if err != nil {
