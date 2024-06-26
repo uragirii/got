@@ -66,7 +66,7 @@ func unmarshalIndexEntry(entry *[]byte, start, end int) (*IndexEntry, error) {
 }
 
 // @see https://git-scm.com/docs/index-format
-type GitIndex struct {
+type Index struct {
 	fileMap map[string]*IndexEntry
 }
 
@@ -77,7 +77,7 @@ func byteSliceToInt(bytesSlice *[]byte) (int64, error) {
 	return strconv.ParseInt(fmt.Sprintf("%x", *bytesSlice), 16, 64)
 }
 
-func UnmarshallGitIndex() (*GitIndex, error) {
+func UnmarshallGitIndex() (*Index, error) {
 	gitDir, err := internals.GetGitDir()
 
 	if err != nil {
@@ -176,23 +176,23 @@ func UnmarshallGitIndex() (*GitIndex, error) {
 		indexEntryMap[indexEntry.Filepath] = indexEntry
 	}
 
-	return &GitIndex{
+	return &Index{
 		fileMap: indexEntryMap,
 	}, nil
 
 }
 
-func (i *GitIndex) Has(filePath string) bool {
+func (i *Index) Has(filePath string) bool {
 	_, ok := i.fileMap[filePath]
 
 	return ok
 }
 
-func (i *GitIndex) Get(filePath string) *IndexEntry {
+func (i *Index) Get(filePath string) *IndexEntry {
 	return i.fileMap[filePath]
 }
 
-func (i *GitIndex) GetTrackedFiles() []*IndexEntry {
+func (i *Index) GetTrackedFiles() []*IndexEntry {
 	indexEnteries := make([]*IndexEntry, 0, len(i.fileMap))
 
 	for _, entry := range i.fileMap {
