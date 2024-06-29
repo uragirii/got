@@ -36,7 +36,7 @@ type GitObject struct {
 	sha                  *git.SHA
 }
 
-func UnmarshallGitObject(sha *git.SHA) (*GitObject, error) {
+func NewGitObjectFromSHA(sha *git.SHA) (*GitObject, error) {
 	objPath, err := getObjectPath(sha)
 
 	if err != nil {

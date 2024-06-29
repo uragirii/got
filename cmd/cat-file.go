@@ -78,7 +78,7 @@ func CatFile(c *internals.Command, gitDir string) {
 		panic(err)
 	}
 
-	obj, err := object.UnmarshallGitObject(sha)
+	obj, err := object.NewGitObjectFromSHA(sha)
 
 	if err != nil {
 		panic(err)

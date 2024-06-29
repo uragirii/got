@@ -1,8 +1,10 @@
 package git
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
+	"strings"
 )
 
 type SHA struct {
@@ -21,13 +23,15 @@ func (sha *SHA) Eq(other *SHA) bool {
 
 func SHAFromByteSlice(byteSlice *[]byte) (*SHA, error) {
 
+	trimmedBytes := bytes.Trim(*byteSlice, "\n")
+
 	return &SHA{
-		hash: byteSlice,
+		hash: &trimmedBytes,
 	}, nil
 }
 
 func SHAFromString(shaStr string) (*SHA, error) {
-	byteSlice, err := hex.DecodeString(shaStr)
+	byteSlice, err := hex.DecodeString(strings.Trim(shaStr, "\n"))
 
 	if err != nil {
 		return nil, err
