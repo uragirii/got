@@ -50,3 +50,7 @@ func (sha *SHA) MarshallToStr() string {
 func (sha *SHA) GetBytes() *[]byte {
 	return sha.hash
 }
+
+func (sha *SHA) GetBinStr() string {
+	return string(*sha.hash)
+}
