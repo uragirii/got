@@ -55,7 +55,13 @@ func ToCommit(obj *Object) (*Commit, error) {
 		return nil, err
 	}
 
-	tree, err := LoadTree(treeSha)
+	treeObj, err := NewObjectFromSHA(treeSha)
+
+	if err != nil {
+		return nil, err
+	}
+
+	tree, err := ToTree(treeObj)
 
 	if err != nil {
 		return nil, err

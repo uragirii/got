@@ -83,7 +83,13 @@ func (obj *Object) getContentWithoutHeader() *[]byte {
 // Pretty print the obj
 func (obj *Object) String() string {
 	if obj.objectType == TreeObj {
-		panic("pretty print not implemented")
+		tree, err := ToTree(obj)
+
+		if err != nil {
+			panic(err)
+		}
+
+		return tree.String()
 	}
 	return fmt.Sprint(string(*obj.getContentWithoutHeader()))
 }
