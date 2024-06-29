@@ -8,11 +8,13 @@ import (
 	"strings"
 )
 
+// Deprecated: use git.Ignore instead
 type IgnoreEntry struct {
 	rule    string
 	rootDir string
 }
 
+// Deprecated: use git.Ignore instead
 func (entry *IgnoreEntry) Match(filePath string) bool {
 	rel, err := filepath.Rel(entry.rootDir, filePath)
 
@@ -40,10 +42,12 @@ func (entry *IgnoreEntry) Match(filePath string) bool {
 	return matched
 }
 
+// Deprecated: use git.Ignore instead
 type GitIgnore struct {
 	rules []*IgnoreEntry
 }
 
+// Deprecated: use git.Ignore instead
 func (g *GitIgnore) New(ignoreFilePath string, rootDir string) error {
 	contents, err := os.ReadFile(ignoreFilePath)
 
@@ -69,6 +73,7 @@ func (g *GitIgnore) New(ignoreFilePath string, rootDir string) error {
 	return nil
 }
 
+// Deprecated: use git.Ignore instead
 func (g *GitIgnore) WithFile(ignoreFilePath string, rootDir string) (*GitIgnore, error) {
 	contents, err := os.ReadFile(ignoreFilePath)
 
@@ -94,6 +99,7 @@ func (g *GitIgnore) WithFile(ignoreFilePath string, rootDir string) (*GitIgnore,
 	}, nil
 }
 
+// Deprecated: use git.Ignore instead
 func (g *GitIgnore) Match(filePath string) bool {
 	for _, rule := range g.rules {
 		if rule.Match(filePath) {

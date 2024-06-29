@@ -119,6 +119,7 @@ func getDirHash(dirPath string, gitIgnore *GitIgnore) (*dirTree, error) {
 	return dirHash, nil
 }
 
+// Deprecated: use Tree instead
 func GetTreeHash(rootDir string) *dirTree {
 
 	var gitIgnore GitIgnore
