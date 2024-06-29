@@ -18,7 +18,7 @@ const _IndexEntryMetadataLen int = 62
 
 const _IndexEntrySizeLoc int = 36
 const _IndexEntrySHALoc int = _IndexEntrySizeLoc + 4
-const _IndexEntryNameLoc int = _IndexEntrySHALoc + 20 + 2 // SHA len is 20, 2 bytes for 16 bits flags
+const _IndexEntryNameLoc int = _IndexEntrySHALoc + SHA_BYTES_LEN + 2 // 2 bytes for 16 bits flags
 const _IndexEntryPaddingBytes int = 8
 
 var _IndexFileHeader [4]byte = [4]byte{0x44, 0x49, 0x52, 0x43}           // DIRC

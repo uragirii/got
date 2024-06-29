@@ -7,6 +7,9 @@ import (
 	"strings"
 )
 
+const SHA_BYTES_LEN = 20
+const SHA_STR_LEN = SHA_BYTES_LEN * 2
+
 type SHA struct {
 	hash *[]byte
 }

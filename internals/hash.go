@@ -51,6 +51,7 @@ func HashBlob(path string, compress bool) (*[20]byte, *bytes.Buffer, error) {
 
 }
 
+// Deprecated: use the objects.Tree
 func HashTree(tree *dirTree) (*[20]byte, error) {
 
 	items := make([]string, 0, len(tree.childFiles)+len(tree.childDirs))
@@ -126,6 +127,7 @@ func HashTree(tree *dirTree) (*[20]byte, error) {
 	return &hash, nil
 }
 
+// Deprecated: use the objects.Object
 func DecodeHash(hash string) (*[]byte, error) {
 	folder := hash[0:2]
 	hashFile := hash[2:]
@@ -172,6 +174,7 @@ func DecodeHash(hash string) (*[]byte, error) {
 	return nil, fmt.Errorf("hash not found")
 }
 
+// Deprecated
 func GetObjHeaderEnd(decodedBytes *[]byte) int {
 	for idx, b := range *decodedBytes {
 		if b == 0 {
@@ -182,6 +185,7 @@ func GetObjHeaderEnd(decodedBytes *[]byte) int {
 	return -1
 }
 
+// Deprecated: use the objects.Object
 func GetObj(decodedBytes *[]byte) (string, *[]byte) {
 	headerSplitIdx := GetObjHeaderEnd(decodedBytes)
 
