@@ -1,6 +1,7 @@
 package git
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -45,8 +46,11 @@ type Ignore struct {
 }
 
 func NewIgnore(filePath string) (*Ignore, error) {
+	var rules []ignoreEntry
 
-	var ignore *Ignore
+	ignore := Ignore{
+		rules: rules,
+	}
 
 	return ignore.WithFile(filePath)
 }
@@ -62,6 +66,11 @@ func (g *Ignore) Match(filePath string) bool {
 }
 
 func (g *Ignore) WithFile(ignoreFilePath string) (*Ignore, error) {
+	// If file doesn't exist return empty ignore list
+	if _, err := os.Stat(ignoreFilePath); errors.Is(err, os.ErrNotExist) {
+		return g, nil
+	}
+
 	contents, err := os.ReadFile(ignoreFilePath)
 
 	if err != nil {
