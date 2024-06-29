@@ -14,29 +14,29 @@ import (
 	"github.com/uragirii/got/internals/git"
 )
 
-type GitObjectType string
+type ObjectType string
 
 const _ObjectsDir string = "objects"
 
 const (
-	BlobObj   GitObjectType = "blob"
-	TreeObj   GitObjectType = "tree"
-	CommitObj GitObjectType = "commit"
+	BlobObj   ObjectType = "blob"
+	TreeObj   ObjectType = "tree"
+	CommitObj ObjectType = "commit"
 )
 
 var ErrInvalidObj = fmt.Errorf("invalid git object")
 
-type GitObject struct {
+type Object struct {
 	// Unmarshall(path string)
-	// GetObjType() GitObjectType
+	// GetObjType() ObjectType
 	// PrettyPrint()
-	objectType GitObjectType
+	objectType ObjectType
 	// Also contains header for the object
 	uncompressedContents *[]byte
 	sha                  *git.SHA
 }
 
-func NewGitObjectFromSHA(sha *git.SHA) (*GitObject, error) {
+func NewObjectFromSHA(sha *git.SHA) (*Object, error) {
 	objPath, err := getObjectPath(sha)
 
 	if err != nil {
@@ -61,14 +61,14 @@ func NewGitObjectFromSHA(sha *git.SHA) (*GitObject, error) {
 		return nil, err
 	}
 
-	return &GitObject{
+	return &Object{
 		sha:                  sha,
 		objectType:           objType,
 		uncompressedContents: decompressedContents,
 	}, nil
 }
 
-func (obj *GitObject) getContentWithoutHeader() *[]byte {
+func (obj *Object) getContentWithoutHeader() *[]byte {
 	for i := 0; i < len(*obj.uncompressedContents); i++ {
 		if (*obj.uncompressedContents)[i] == '\u0000' {
 			contents := (*obj.uncompressedContents)[i+1:]
@@ -81,22 +81,22 @@ func (obj *GitObject) getContentWithoutHeader() *[]byte {
 
 // TODO:
 // Pretty print the obj
-func (obj *GitObject) String() string {
-	if obj.objectType != BlobObj {
+func (obj *Object) String() string {
+	if obj.objectType == TreeObj {
 		panic("pretty print not implemented")
 	}
 	return fmt.Sprint(string(*obj.getContentWithoutHeader()))
 }
 
-func (obj *GitObject) RawString() string {
+func (obj *Object) RawString() string {
 	return fmt.Sprint(string(*(obj.getContentWithoutHeader())))
 }
 
-func (obj *GitObject) GetObjType() GitObjectType {
+func (obj *Object) GetObjType() ObjectType {
 	return obj.objectType
 }
 
-func (obj *GitObject) Write() error {
+func (obj *Object) Write() error {
 	objPath, err := getObjectPath(obj.sha)
 
 	if err != nil {
@@ -119,11 +119,11 @@ func (obj *GitObject) Write() error {
 
 }
 
-func (obj *GitObject) GetSHA() *git.SHA {
+func (obj *Object) GetSHA() *git.SHA {
 	return obj.sha
 }
 
-func NewGitObject(filePath string) (*GitObject, error) {
+func NewObject(filePath string) (*Object, error) {
 	data, err := os.ReadFile(filePath)
 
 	if err != nil {
@@ -144,7 +144,7 @@ func NewGitObject(filePath string) (*GitObject, error) {
 		return nil, err
 	}
 
-	return &GitObject{
+	return &Object{
 		objectType:           BlobObj,
 		uncompressedContents: &contents,
 		sha:                  sha,
@@ -185,7 +185,7 @@ func decompressObj(contents *[]byte) (*[]byte, error) {
 	return &uncompressed, nil
 }
 
-func getObjType(decompressedContents *[]byte) (GitObjectType, error) {
+func getObjType(decompressedContents *[]byte) (ObjectType, error) {
 	headerEndIdx := slices.Index(*decompressedContents, 0x00)
 
 	if headerEndIdx == -1 {

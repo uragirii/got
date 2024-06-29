@@ -41,7 +41,7 @@ func LsFiles(c *internals.Command, _ string) {
 
 	for _, entry := range gitIndex.GetTrackedFiles() {
 		if c.GetFlag("modified") == "true" {
-			obj, err := object.NewGitObject(entry.Filepath)
+			obj, err := object.NewObject(entry.Filepath)
 
 			if err != nil {
 				panic(err)

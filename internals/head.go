@@ -18,11 +18,14 @@ const (
 	Tag
 )
 
+// Deprecated: use git.Head instead
+
 type Head struct {
 	SHA  string
 	Mode headMode
 }
 
+// Deprecated: use git.Head instead
 func GetHeadSHA() (*Head, error) {
 	gitDir, err := GetGitDir()
 

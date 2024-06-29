@@ -58,7 +58,7 @@ var CAT_FILE *internals.Command = &internals.Command{
 
 // 		shaStr := fmt.Sprintf("%x", sha)
 
-// 		objType, _, err := internals.ReadGitObject(shaStr)
+// 		objType, _, err := internals.ReadObject(shaStr)
 
 // 		if err != nil {
 // 			panic(err)
@@ -78,7 +78,7 @@ func CatFile(c *internals.Command, gitDir string) {
 		panic(err)
 	}
 
-	obj, err := object.NewGitObjectFromSHA(sha)
+	obj, err := object.NewObjectFromSHA(sha)
 
 	if err != nil {
 		panic(err)

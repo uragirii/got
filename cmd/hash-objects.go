@@ -42,7 +42,7 @@ func HashObject(c *internals.Command, _ string) {
 		go func(arg string, idx int) {
 			defer wg.Done()
 
-			obj, err := object.NewGitObject(arg)
+			obj, err := object.NewObject(arg)
 
 			if err != nil {
 				panic(err)

@@ -16,7 +16,7 @@ import (
 
 const OBJECTS_PATH = "objects"
 
-// Deprecated: use the GitObject to hash the obj
+// Deprecated: use the Object to hash the obj
 func HashBlob(path string, compress bool) (*[20]byte, *bytes.Buffer, error) {
 	data, err := os.ReadFile(path)
 
