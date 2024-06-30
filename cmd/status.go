@@ -78,5 +78,9 @@ func Status(c *internals.Command, gitPath string) {
 		}
 		fmt.Println()
 	}
-	fmt.Println(`no changes added to commit (use "git add" and/or "git commit -a")`)
+	if len(changes) > 0 {
+		fmt.Println(`no changes added to commit (use "git add" and/or "git commit -a")`)
+	} else {
+		fmt.Println("nothing to commit, working tree clean")
+	}
 }
