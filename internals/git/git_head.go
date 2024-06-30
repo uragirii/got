@@ -9,8 +9,9 @@ import (
 	"github.com/uragirii/got/internals"
 )
 
-const _HEAD_FILE string = "HEAD"
-const _REF string = "ref: "
+const _HeadFile string = "HEAD"
+const _Ref string = "ref: "
+const _BranchPrefix = "refs/heads/"
 
 type HeadMode int
 
@@ -21,8 +22,9 @@ const (
 )
 
 type Head struct {
-	SHA  *SHA
-	Mode HeadMode
+	SHA    *SHA
+	Mode   HeadMode
+	Branch string
 }
 
 var ErrInvalidHead = fmt.Errorf("invalid HEAD")
@@ -34,7 +36,7 @@ func parseRefHead(headContents string) (*Head, error) {
 		return nil, err
 	}
 
-	refPath := headContents[len(_REF):]
+	refPath := headContents[len(_Ref):]
 
 	shaBytes, err := os.ReadFile(path.Join(gitDir, refPath))
 
@@ -42,10 +44,13 @@ func parseRefHead(headContents string) (*Head, error) {
 		return nil, err
 	}
 
-	headMode := Branch
+	var branch string
 
-	if strings.Contains(refPath, "tags") {
-		headMode = Tag
+	headMode := Tag
+
+	if strings.HasPrefix(refPath, _BranchPrefix) {
+		headMode = Branch
+		branch = refPath[len(_BranchPrefix):]
 	}
 
 	// Need to convert to string as the SHA in hex is stored as string
@@ -57,8 +62,9 @@ func parseRefHead(headContents string) (*Head, error) {
 	}
 
 	return &Head{
-		SHA:  sha,
-		Mode: headMode,
+		SHA:    sha,
+		Mode:   headMode,
+		Branch: branch,
 	}, nil
 }
 
@@ -69,7 +75,7 @@ func NewHead() (*Head, error) {
 		return nil, err
 	}
 
-	headFilePath := path.Join(gitDir, _HEAD_FILE)
+	headFilePath := path.Join(gitDir, _HeadFile)
 
 	headByteContents, err := os.ReadFile(headFilePath)
 
@@ -79,7 +85,7 @@ func NewHead() (*Head, error) {
 
 	headContents := strings.Trim(string(headByteContents), "\n")
 
-	if strings.HasPrefix(headContents, _REF) {
+	if strings.HasPrefix(headContents, _Ref) {
 		return parseRefHead(headContents)
 	}
 

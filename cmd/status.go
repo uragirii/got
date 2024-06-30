@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/uragirii/got/internals"
+	"github.com/uragirii/got/internals/color"
 	"github.com/uragirii/got/internals/git"
 	"github.com/uragirii/got/internals/git/object"
 )
@@ -47,30 +48,35 @@ func Status(c *internals.Command, gitPath string) {
 		panic(err)
 	}
 
-	fmt.Println(changes)
+	var modifiedFiles []object.ChangeItem
+	var untrackedFiles []string
 
-	// filesChan := make(chan *internals.FileStatus, 10)
+	for _, change := range changes {
+		if change.Status != object.StatusAdded {
+			modifiedFiles = append(modifiedFiles, change)
+		} else {
+			untrackedFiles = append(untrackedFiles, change.RelPath)
+		}
+	}
 
-	// rootDir := path.Join(gitPath, "..")
+	fmt.Println("On branch", head.Branch)
 
-	// currDirTree := internals.GetTreeHash(rootDir)
-
-	// var indexFile internals.GitIndex
-
-	// err = indexFile.New(gitPath)
-
-	// if err != nil {
-	// 	panic(err)
-	// }
-
-	// go func() {
-	// 	internals.CompareTree(commit.Tree, currDirTree, &indexFile, filesChan)
-	// 	close(filesChan)
-	// }()
-
-	// for file := range filesChan {
-
-	// 	relPath, _ := filepath.Rel(rootDir, file.Path)
-	// 	fmt.Println(file.Status, relPath)
-	// }
+	if len(modifiedFiles) > 0 {
+		fmt.Println("Changes not staged for commit:")
+		fmt.Println(`  (use "git add <file>..." to update what will be committed)`)
+		fmt.Println(`  (use "git add <file>..." to update what will be committed)`)
+		for _, file := range modifiedFiles {
+			fmt.Printf("\t%s\n", color.RedString(fmt.Sprintf("%s:   %s", file.Status.String(), file.RelPath)))
+		}
+		fmt.Println()
+	}
+	if len(untrackedFiles) > 0 {
+		fmt.Println("Untracked files:")
+		fmt.Println(`  (use "git add <file>..." to include in what will be committed)`)
+		for _, file := range untrackedFiles {
+			fmt.Printf("\t%s\n", color.RedString(file))
+		}
+		fmt.Println()
+	}
+	fmt.Println(`no changes added to commit (use "git add" and/or "git commit -a")`)
 }

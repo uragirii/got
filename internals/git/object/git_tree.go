@@ -287,6 +287,18 @@ func (tree Tree) String() string {
 
 type ChangeStatus int
 
+func (status ChangeStatus) String() string {
+	switch status {
+	case StatusModified:
+		return "modified"
+	case StatusDeleted:
+		return "deleted "
+	case StatusAdded:
+		return "added"
+	}
+	return "invalid"
+}
+
 const (
 	StatusModified ChangeStatus = iota
 	StatusAdded
@@ -296,18 +308,6 @@ const (
 type ChangeItem struct {
 	Status  ChangeStatus
 	RelPath string
-}
-
-func (item ChangeItem) String() string {
-	switch item.Status {
-	case StatusModified:
-		return fmt.Sprintf("Modified %s\n", item.RelPath)
-	case StatusDeleted:
-		return fmt.Sprintf("Deleted %s\n", item.RelPath)
-	case StatusAdded:
-		return fmt.Sprintf("Added %s\n", item.RelPath)
-	}
-	return "invalid"
 }
 
 // Call compare function on the Tree generated from git
