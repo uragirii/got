@@ -8,7 +8,7 @@ import (
 )
 
 type Commit struct {
-	tree      *Tree
+	Tree      *Tree
 	parentSHA *git.SHA
 	sha       *git.SHA
 	message   string
@@ -68,7 +68,7 @@ func ToCommit(obj *Object) (*Commit, error) {
 	}
 
 	return &Commit{
-		tree:      tree,
+		Tree:      tree,
 		sha:       obj.sha,
 		message:   commitMsg,
 		parentSHA: parentSha,

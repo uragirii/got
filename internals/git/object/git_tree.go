@@ -45,6 +45,32 @@ func (entry treeEntry) String() string {
 	return fmt.Sprintf("%s %s\t%s", entry.mode.Pretty(), entry.sha.MarshallToStr(), entry.name)
 }
 
+func (entry *treeEntry) GetTree() (*Tree, error) {
+	if entry.mode != ModeDir {
+		return nil, fmt.Errorf("GetTree called on File entry")
+	}
+
+	if entry.tree != nil {
+		return entry.tree, nil
+	}
+
+	obj, err := NewObjectFromSHA(entry.sha)
+
+	if err != nil {
+		return nil, err
+	}
+
+	tree, err := ToTree(obj)
+
+	if err != nil {
+		return nil, err
+	}
+
+	entry.tree = tree
+
+	return entry.tree, nil
+}
+
 type Tree struct {
 	entries []treeEntry
 	sha     *git.SHA
@@ -257,4 +283,196 @@ func (tree Tree) String() string {
 	}
 
 	return sb.String()
+}
+
+type ChangeStatus int
+
+const (
+	StatusModified ChangeStatus = iota
+	StatusAdded
+	StatusDeleted
+)
+
+type ChangeItem struct {
+	Status  ChangeStatus
+	RelPath string
+}
+
+func (item ChangeItem) String() string {
+	switch item.Status {
+	case StatusModified:
+		return fmt.Sprintf("Modified %s\n", item.RelPath)
+	case StatusDeleted:
+		return fmt.Sprintf("Deleted %s\n", item.RelPath)
+	case StatusAdded:
+		return fmt.Sprintf("Added %s\n", item.RelPath)
+	}
+	return "invalid"
+}
+
+// Call compare function on the Tree generated from git
+// then compare it with the Live Tree
+func (tree Tree) Compare(other *Tree) ([]ChangeItem, error) {
+
+	if tree.sha.Eq(other.sha) {
+		return []ChangeItem{}, nil
+	}
+
+	treeNames := make(map[string]*treeEntry, len(tree.entries))
+	otherTreeNames := make(map[string]*treeEntry, len(other.entries))
+
+	changeChan := make(chan ChangeItem)
+
+	for _, entry := range tree.entries {
+		treeNames[entry.name] = &entry
+	}
+
+	for _, entry := range other.entries {
+		otherTreeNames[entry.name] = &entry
+	}
+
+	var wg sync.WaitGroup
+
+	visited := make(map[string]bool)
+
+	for _, entry := range tree.entries {
+		otherEntry, ok := otherTreeNames[entry.name]
+
+		visited[entry.name] = true
+
+		if !ok {
+			// Item is deleted
+			wg.Add(1)
+			// Need to wrap this in goroutine as channel is unbuffered
+			go func(entry treeEntry) {
+				defer wg.Done()
+
+				changeChan <- ChangeItem{
+					Status:  StatusDeleted,
+					RelPath: entry.name,
+				}
+			}(entry)
+
+		} else if !entry.sha.Eq(otherEntry.sha) {
+			// Item is modified
+
+			if entry.mode != ModeDir {
+				wg.Add(1)
+				go func(entry treeEntry) {
+					defer wg.Done()
+
+					changeChan <- ChangeItem{
+						Status:  StatusModified,
+						RelPath: entry.name,
+					}
+				}(entry)
+
+			} else {
+				entryTree, err := entry.GetTree()
+
+				if err != nil {
+					return nil, err
+				}
+
+				wg.Add(1)
+
+				go func(entry treeEntry) {
+					defer wg.Done()
+
+					subChanges, err := entryTree.Compare(otherEntry.tree)
+
+					if err != nil {
+						panic(err)
+					}
+
+					for _, change := range subChanges {
+						changeChan <- ChangeItem{
+							Status:  change.Status,
+							RelPath: path.Join(entry.name, change.RelPath),
+						}
+					}
+
+				}(entry)
+
+			}
+
+		}
+	}
+
+	for _, otherEntry := range other.entries {
+		entry, ok := treeNames[otherEntry.name]
+
+		if visited[otherEntry.name] {
+			continue
+		}
+
+		if !ok {
+			// Item is Added
+			wg.Add(1)
+			go func(otherEntry treeEntry) {
+				defer wg.Done()
+				changeChan <- ChangeItem{
+					Status:  StatusAdded,
+					RelPath: otherEntry.name,
+				}
+			}(otherEntry)
+
+		} else if !entry.sha.Eq(otherEntry.sha) {
+			// Item is modified
+
+			if entry.mode != ModeDir {
+				wg.Add(1)
+				go func(otherEntry treeEntry) {
+					defer wg.Done()
+
+					changeChan <- ChangeItem{
+						Status:  StatusModified,
+						RelPath: otherEntry.name,
+					}
+				}(otherEntry)
+
+			} else {
+				entryTree, err := entry.GetTree()
+
+				if err != nil {
+					return nil, err
+				}
+
+				wg.Add(1)
+
+				go func(otherEntry treeEntry) {
+					defer wg.Done()
+
+					subChanges, err := entryTree.Compare(otherEntry.tree)
+
+					if err != nil {
+						panic(err)
+					}
+
+					for _, change := range subChanges {
+						changeChan <- ChangeItem{
+							Status:  change.Status,
+							RelPath: path.Join(otherEntry.name, change.RelPath),
+						}
+					}
+
+				}(otherEntry)
+
+			}
+
+		}
+	}
+
+	go func() {
+		wg.Wait()
+		close(changeChan)
+	}()
+
+	var changeItems []ChangeItem
+
+	for change := range changeChan {
+		changeItems = append(changeItems, change)
+	}
+
+	return changeItems, nil
 }

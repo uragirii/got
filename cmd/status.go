@@ -1,7 +1,11 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/uragirii/got/internals"
+	"github.com/uragirii/got/internals/git"
+	"github.com/uragirii/got/internals/git/object"
 )
 
 var STATUS *internals.Command = &internals.Command{
@@ -13,17 +17,37 @@ var STATUS *internals.Command = &internals.Command{
 
 func Status(c *internals.Command, gitPath string) {
 
-	// head, err := internals.GetHeadSHA()
+	head, err := git.NewHead()
 
-	// if err != nil {
-	// 	panic(err)
-	// }
+	if err != nil {
+		panic(err)
+	}
 
-	// commit, err := internals.ParseCommit(head.SHA)
+	obj, err := object.NewObjectFromSHA(head.SHA)
 
-	// if err != nil {
-	// 	panic(err)
-	// }
+	if err != nil {
+		panic(err)
+	}
+
+	commit, err := object.ToCommit(obj)
+
+	if err != nil {
+		panic(err)
+	}
+
+	tree, err := object.NewTree()
+
+	if err != nil {
+		panic(err)
+	}
+
+	changes, err := commit.Tree.Compare(tree)
+
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(changes)
 
 	// filesChan := make(chan *internals.FileStatus, 10)
 
