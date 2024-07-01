@@ -5,7 +5,7 @@ import (
 	"os"
 	"path"
 	"strconv"
-	"sync"
+	"strings"
 
 	"github.com/uragirii/got/internals"
 )
@@ -24,6 +24,32 @@ const _IndexEntryPaddingBytes int = 8
 var _IndexFileHeader [4]byte = [4]byte{0x44, 0x49, 0x52, 0x43}           // DIRC
 var _IndexFileSupportedVersion [4]byte = [4]byte{0x00, 0x00, 0x00, 0x02} // Version 2
 
+var _TreeExtensionHeader [4]byte = [4]byte{0x54, 0x52, 0x45, 0x45} // TREE
+const _TreeExtensionSize int = 4                                   // 4 bytes reserved for tree size
+
+type CacheTree struct {
+	relPath    string
+	entryCount int
+	subTrees   []*CacheTree
+	sha        *SHA
+}
+
+func (tree CacheTree) String() string {
+	var sb strings.Builder
+
+	sb.WriteString(tree.relPath)
+
+	for _, subTree := range tree.subTrees {
+		sb.WriteRune('\t')
+		sb.WriteString(subTree.String())
+	}
+
+	sb.WriteString("\t\n")
+
+	return sb.String()
+
+}
+
 type IndexEntry struct {
 
 	// ctime    uint64
@@ -39,7 +65,7 @@ type IndexEntry struct {
 	Filepath string
 }
 
-func unmarshalIndexEntry(entry *[]byte, start, end int) (*IndexEntry, error) {
+func newIndexEntry(entry *[]byte, start, end int) (*IndexEntry, error) {
 	sizeBytes := (*entry)[start+_IndexEntrySizeLoc : start+_IndexEntrySizeLoc+4]
 
 	shaBytes := (*entry)[start+_IndexEntrySHALoc : start+_IndexEntrySHALoc+20] // SHA is 20 bytes
@@ -65,9 +91,102 @@ func unmarshalIndexEntry(entry *[]byte, start, end int) (*IndexEntry, error) {
 
 }
 
+func parseCacheTreeEntry(treeContents *[]byte) (*CacheTree, int, error) {
+
+	fmt.Println("\t", "******")
+	fmt.Println("\t", string(*treeContents))
+	fmt.Println("\t", "******")
+	fmt.Println()
+
+	startIdx := 0
+	idx := 0
+
+	for ; (*treeContents)[idx] != 0x00; idx++ {
+	}
+
+	relPath := string((*treeContents)[startIdx:idx])
+
+	idx++
+
+	startIdx = idx
+
+	for ; (*treeContents)[idx] != ' '; idx++ {
+
+	}
+
+	entryCount, err := strconv.Atoi(string((*treeContents)[startIdx:idx]))
+
+	if err != nil {
+		return nil, 0, err
+	}
+
+	idx++
+
+	startIdx = idx
+
+	for ; (*treeContents)[idx] != '\n'; idx++ {
+
+	}
+
+	subTreeCount, err := strconv.Atoi(string((*treeContents)[startIdx:idx]))
+	idx++
+
+	if err != nil {
+		return nil, 0, err
+	}
+
+	shaSlice := (*treeContents)[idx : idx+SHA_BYTES_LEN]
+
+	idx += SHA_BYTES_LEN
+
+	sha, err := SHAFromByteSlice(&shaSlice)
+
+	if err != nil {
+		return nil, 0, err
+	}
+
+	subTrees := make([]*CacheTree, 0, subTreeCount)
+
+	treeSlice := (*treeContents)[idx:]
+
+	for range subTreeCount {
+
+		subTree, endIdx, err := parseCacheTreeEntry(&treeSlice)
+
+		if err != nil {
+			return nil, 0, err
+		}
+
+		fmt.Println("------")
+		fmt.Println(subTree.relPath, "-->", string(treeSlice))
+		fmt.Println("------")
+
+		idx = endIdx
+		treeSlice = treeSlice[idx:]
+
+		subTrees = append(subTrees, subTree)
+	}
+
+	fmt.Println(relPath, subTreeCount)
+
+	return &CacheTree{
+		relPath:    relPath,
+		entryCount: entryCount,
+		subTrees:   subTrees,
+		sha:        sha,
+	}, idx, nil
+}
+
+func newCacheTree(treeContents *[]byte) (*CacheTree, error) {
+	tree, _, err := parseCacheTreeEntry(treeContents)
+
+	return tree, err
+}
+
 // @see https://git-scm.com/docs/index-format
 type Index struct {
-	fileMap map[string]*IndexEntry
+	fileMap   map[string]*IndexEntry
+	CacheTree *CacheTree
 }
 
 var ErrInvalidIndex = fmt.Errorf("invalid index file")
@@ -77,7 +196,7 @@ func byteSliceToInt(bytesSlice *[]byte) (int64, error) {
 	return strconv.ParseInt(fmt.Sprintf("%x", *bytesSlice), 16, 64)
 }
 
-func UnmarshallGitIndex() (*Index, error) {
+func NewIndex() (*Index, error) {
 	gitDir, err := internals.GetGitDir()
 
 	if err != nil {
@@ -125,8 +244,6 @@ func UnmarshallGitIndex() (*Index, error) {
 
 	indexEnteries := make([]*IndexEntry, numFiles)
 
-	var wg sync.WaitGroup
-
 	idx := 0
 
 	for currFileIdx := 0; currFileIdx < int(numFiles); currFileIdx++ {
@@ -138,22 +255,13 @@ func UnmarshallGitIndex() (*Index, error) {
 		for ; actualContent[idx] != 0x00; idx++ {
 		}
 
-		wg.Add(1)
+		indexEntry, err := newIndexEntry(&actualContent, startLoc, idx)
 
-		go func(currFileIdx, idx int) {
-			defer wg.Done()
+		if err != nil {
+			return nil, err
+		}
 
-			indexEntry, err := unmarshalIndexEntry(&actualContent, startLoc, idx)
-
-			// TODO: handle errors inside goroutines
-			if err != nil {
-				fmt.Println("WARN need to better handle errs")
-				panic(err)
-			}
-
-			indexEnteries[currFileIdx] = indexEntry
-
-		}(currFileIdx, idx)
+		indexEnteries[currFileIdx] = indexEntry
 
 		// @see https://git-scm.com/docs/index-format
 		// 1-8 nul bytes as necessary to pad the entry to a multiple of eight bytes
@@ -168,7 +276,32 @@ func UnmarshallGitIndex() (*Index, error) {
 		idx += padding
 	}
 
-	wg.Wait()
+	treeContents := actualContent[idx:]
+
+	startIdx := 0
+
+	for i := range treeContents {
+		isStart := true
+
+		for j := range _TreeExtensionHeader {
+			if treeContents[startIdx+j] != _TreeExtensionHeader[j] {
+				isStart = false
+			}
+		}
+
+		if isStart {
+			startIdx = i
+			break
+		}
+	}
+
+	treeContents = treeContents[startIdx+len(_TreeExtensionHeader)+_TreeExtensionSize:]
+
+	cacheTree, err := newCacheTree(&treeContents)
+
+	if err != nil {
+		return nil, err
+	}
 
 	indexEntryMap := make(map[string]*IndexEntry, numFiles)
 
@@ -177,7 +310,8 @@ func UnmarshallGitIndex() (*Index, error) {
 	}
 
 	return &Index{
-		fileMap: indexEntryMap,
+		fileMap:   indexEntryMap,
+		CacheTree: cacheTree,
 	}, nil
 
 }
