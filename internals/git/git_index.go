@@ -5,7 +5,6 @@ import (
 	"os"
 	"path"
 	"strconv"
-	"strings"
 
 	"github.com/uragirii/got/internals"
 )
@@ -28,26 +27,11 @@ var _TreeExtensionHeader [4]byte = [4]byte{0x54, 0x52, 0x45, 0x45} // TREE
 const _TreeExtensionSize int = 4                                   // 4 bytes reserved for tree size
 
 type CacheTree struct {
-	relPath    string
-	entryCount int
-	subTrees   []*CacheTree
-	sha        *SHA
-}
-
-func (tree CacheTree) String() string {
-	var sb strings.Builder
-
-	sb.WriteString(tree.relPath)
-
-	for _, subTree := range tree.subTrees {
-		sb.WriteRune('\t')
-		sb.WriteString(subTree.String())
-	}
-
-	sb.WriteString("\t\n")
-
-	return sb.String()
-
+	relPath       string
+	entryCount    int
+	subTrees      []*CacheTree
+	sha           *SHA
+	subTreesCount int
 }
 
 type IndexEntry struct {
@@ -91,102 +75,105 @@ func newIndexEntry(entry *[]byte, start, end int) (*IndexEntry, error) {
 
 }
 
-func parseCacheTreeEntry(treeContents *[]byte) (*CacheTree, int, error) {
-
-	fmt.Println("\t", "******")
-	fmt.Println("\t", string(*treeContents))
-	fmt.Println("\t", "******")
-	fmt.Println()
-
-	startIdx := 0
-	idx := 0
-
-	for ; (*treeContents)[idx] != 0x00; idx++ {
+func parseCacheTreeArrToTree(cacheTreeArr *[]*CacheTree, startIdx int) (*CacheTree, int, error) {
+	if startIdx > len(*cacheTreeArr) {
+		return nil, 0, fmt.Errorf("invalid index %d", startIdx)
 	}
 
-	relPath := string((*treeContents)[startIdx:idx])
+	cacheTree := (*cacheTreeArr)[startIdx]
 
-	idx++
+	subTrees := make([]*CacheTree, 0, cacheTree.subTreesCount)
 
-	startIdx = idx
+	idx := startIdx + 1
 
-	for ; (*treeContents)[idx] != ' '; idx++ {
-
-	}
-
-	entryCount, err := strconv.Atoi(string((*treeContents)[startIdx:idx]))
-
-	if err != nil {
-		return nil, 0, err
-	}
-
-	idx++
-
-	startIdx = idx
-
-	for ; (*treeContents)[idx] != '\n'; idx++ {
-
-	}
-
-	subTreeCount, err := strconv.Atoi(string((*treeContents)[startIdx:idx]))
-	idx++
-
-	if err != nil {
-		return nil, 0, err
-	}
-
-	shaSlice := (*treeContents)[idx : idx+SHA_BYTES_LEN]
-
-	idx += SHA_BYTES_LEN
-
-	sha, err := SHAFromByteSlice(&shaSlice)
-
-	if err != nil {
-		return nil, 0, err
-	}
-
-	subTrees := make([]*CacheTree, 0, subTreeCount)
-
-	treeSlice := (*treeContents)[idx:]
-
-	for range subTreeCount {
-
-		subTree, endIdx, err := parseCacheTreeEntry(&treeSlice)
+	for range cacheTree.subTreesCount {
+		subTree, newIdx, err := parseCacheTreeArrToTree(cacheTreeArr, idx)
 
 		if err != nil {
 			return nil, 0, err
 		}
 
-		fmt.Println("------")
-		fmt.Println(subTree.relPath, "-->", string(treeSlice))
-		fmt.Println("------")
-
-		idx = endIdx
-		treeSlice = treeSlice[idx:]
-
 		subTrees = append(subTrees, subTree)
+
+		idx = newIdx
 	}
 
-	fmt.Println(relPath, subTreeCount)
+	cacheTree.subTrees = subTrees
 
-	return &CacheTree{
-		relPath:    relPath,
-		entryCount: entryCount,
-		subTrees:   subTrees,
-		sha:        sha,
-	}, idx, nil
+	return cacheTree, idx, nil
 }
 
 func newCacheTree(treeContents *[]byte) (*CacheTree, error) {
-	tree, _, err := parseCacheTreeEntry(treeContents)
+	// tree, _, err := parseCacheTreeEntry(treeContents, 1)
 
-	return tree, err
+	var cacheTrees []*CacheTree
+
+	for idx := 0; idx < len(*treeContents)-SHA_BYTES_LEN; {
+		startIdx := idx
+
+		for ; (*treeContents)[idx] != 0x00; idx++ {
+		}
+
+		relPath := string((*treeContents)[startIdx:idx])
+
+		idx++
+
+		startIdx = idx
+
+		for ; (*treeContents)[idx] != ' '; idx++ {
+		}
+
+		entryCount, err := strconv.Atoi(string((*treeContents)[startIdx:idx]))
+
+		if err != nil {
+			return nil, err
+		}
+
+		idx++
+
+		startIdx = idx
+
+		for ; (*treeContents)[idx] != '\n'; idx++ {
+		}
+
+		subTreeCount, err := strconv.Atoi(string((*treeContents)[startIdx:idx]))
+
+		if err != nil {
+			return nil, err
+		}
+
+		idx++
+
+		shaSlice := (*treeContents)[idx : idx+SHA_BYTES_LEN]
+
+		idx += SHA_BYTES_LEN
+
+		sha, err := SHAFromByteSlice(&shaSlice)
+
+		if err != nil {
+			return nil, err
+		}
+
+		cacheTree := &CacheTree{
+			relPath:       relPath,
+			entryCount:    entryCount,
+			sha:           sha,
+			subTreesCount: subTreeCount,
+		}
+
+		cacheTrees = append(cacheTrees, cacheTree)
+	}
+
+	cacheTree, _, err := parseCacheTreeArrToTree(&cacheTrees, 0)
+
+	return cacheTree, err
 }
 
 // @see https://git-scm.com/docs/index-format
 type Index struct {
 	fileMap   map[string]*IndexEntry
-	CacheTree *CacheTree
+	cacheTree *CacheTree
+	sha       *SHA
 }
 
 var ErrInvalidIndex = fmt.Errorf("invalid index file")
@@ -299,6 +286,14 @@ func NewIndex() (*Index, error) {
 
 	cacheTree, err := newCacheTree(&treeContents)
 
+	shaSlice := treeContents[len(treeContents)-SHA_BYTES_LEN:]
+
+	if err != nil {
+		return nil, err
+	}
+
+	sha, err := SHAFromByteSlice(&shaSlice)
+
 	if err != nil {
 		return nil, err
 	}
@@ -311,7 +306,8 @@ func NewIndex() (*Index, error) {
 
 	return &Index{
 		fileMap:   indexEntryMap,
-		CacheTree: cacheTree,
+		cacheTree: cacheTree,
+		sha:       sha,
 	}, nil
 
 }

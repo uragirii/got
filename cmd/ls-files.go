@@ -33,7 +33,7 @@ var LS_FILES *internals.Command = &internals.Command{
 
 func LsFiles(c *internals.Command, _ string) {
 
-	gitIndex, err := git.UnmarshallGitIndex()
+	gitIndex, err := git.NewIndex()
 
 	if err != nil {
 		panic(err)
