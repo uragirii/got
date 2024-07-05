@@ -19,7 +19,7 @@ type Mode string
 const (
 	ModeNormal     Mode = "100644"
 	ModeExecutable Mode = "100755"
-	// Sym link is not supported at the moment
+	// Deprecated: Sym link is not supported at the moment
 	ModeSymLink Mode = "120000"
 	ModeDir     Mode = "40000"
 )

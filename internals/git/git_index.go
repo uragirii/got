@@ -1,9 +1,11 @@
 package git
 
 import (
+	"crypto/sha1"
 	"fmt"
 	"os"
 	"path"
+	"sort"
 	"strconv"
 
 	"github.com/uragirii/got/internals"
@@ -25,14 +27,6 @@ var _IndexFileSupportedVersion [4]byte = [4]byte{0x00, 0x00, 0x00, 0x02} // Vers
 
 var _TreeExtensionHeader [4]byte = [4]byte{0x54, 0x52, 0x45, 0x45} // TREE
 const _TreeExtensionSize int = 4                                   // 4 bytes reserved for tree size
-
-type CacheTree struct {
-	relPath       string
-	entryCount    int
-	subTrees      []*CacheTree
-	sha           *SHA
-	subTreesCount int
-}
 
 type IndexEntry struct {
 
@@ -73,6 +67,14 @@ func newIndexEntry(entry *[]byte, start, end int) (*IndexEntry, error) {
 		Filepath: string(filepath),
 	}, nil
 
+}
+
+type CacheTree struct {
+	relPath       string
+	entryCount    int
+	subTrees      []*CacheTree
+	sha           *SHA
+	subTreesCount int
 }
 
 func parseCacheTreeArrToTree(cacheTreeArr *[]*CacheTree, startIdx int) (*CacheTree, int, error) {
@@ -178,9 +180,59 @@ type Index struct {
 
 var ErrInvalidIndex = fmt.Errorf("invalid index file")
 var ErrVersionNotSupported = fmt.Errorf("index file version not supported")
+var ErrCorruptedIndex = fmt.Errorf("index file corrupted")
 
 func byteSliceToInt(bytesSlice *[]byte) (int64, error) {
 	return strconv.ParseInt(fmt.Sprintf("%x", *bytesSlice), 16, 64)
+}
+
+func verifyIndexFile(fileContents *[]byte) error {
+	if len(*fileContents) < (len(_IndexFileHeader) + len(_IndexFileSupportedVersion)) {
+		return ErrInvalidIndex
+	}
+
+	// Confirm header and version are correct
+
+	headerBytes := (*fileContents)[:len(_IndexFileHeader)]
+	fileVersionBytes := (*fileContents)[len(_IndexFileHeader) : len(_IndexFileHeader)+len(_IndexFileSupportedVersion)]
+
+	for idx, b := range _IndexFileHeader {
+		if headerBytes[idx] != b {
+			return ErrInvalidIndex
+		}
+	}
+
+	for idx, b := range _IndexFileSupportedVersion {
+		if fileVersionBytes[idx] != b {
+			return ErrVersionNotSupported
+		}
+	}
+
+	shaSlice := (*fileContents)[len((*fileContents))-SHA_BYTES_LEN:]
+
+	sha, err := SHAFromByteSlice(&shaSlice)
+
+	if err != nil {
+		return err
+	}
+
+	hashableBytes := (*fileContents)[:len((*fileContents))-SHA_BYTES_LEN]
+
+	fileShaBytes := sha1.Sum(hashableBytes)
+
+	fileShaSlice := fileShaBytes[:]
+
+	fileSha, err := SHAFromByteSlice(&fileShaSlice)
+
+	if err != nil {
+		return err
+	}
+
+	if !sha.Eq(fileSha) {
+		return ErrCorruptedIndex
+	}
+
+	return nil
 }
 
 func NewIndex() (*Index, error) {
@@ -196,25 +248,10 @@ func NewIndex() (*Index, error) {
 		return nil, err
 	}
 
-	if len(fileContents) < (len(_IndexFileHeader) + len(_IndexFileSupportedVersion)) {
-		return nil, ErrInvalidIndex
-	}
+	err = verifyIndexFile(&fileContents)
 
-	// Confirm header and version are correct
-
-	headerBytes := fileContents[:len(_IndexFileHeader)]
-	fileVersionBytes := fileContents[len(_IndexFileHeader) : len(_IndexFileHeader)+len(_IndexFileSupportedVersion)]
-
-	for idx, b := range _IndexFileHeader {
-		if headerBytes[idx] != b {
-			return nil, ErrInvalidIndex
-		}
-	}
-
-	for idx, b := range _IndexFileSupportedVersion {
-		if fileVersionBytes[idx] != b {
-			return nil, ErrVersionNotSupported
-		}
+	if err != nil {
+		return nil, err
 	}
 
 	numFilesBytes := fileContents[len(_IndexFileHeader)+len(_IndexFileSupportedVersion) : len(_IndexFileHeader)+len(_IndexFileSupportedVersion)+_NumFilesBytesLen]
@@ -286,11 +323,11 @@ func NewIndex() (*Index, error) {
 
 	cacheTree, err := newCacheTree(&treeContents)
 
-	shaSlice := treeContents[len(treeContents)-SHA_BYTES_LEN:]
-
 	if err != nil {
 		return nil, err
 	}
+
+	shaSlice := treeContents[len(treeContents)-SHA_BYTES_LEN:]
 
 	sha, err := SHAFromByteSlice(&shaSlice)
 
@@ -328,6 +365,10 @@ func (i *Index) GetTrackedFiles() []*IndexEntry {
 	for _, entry := range i.fileMap {
 		indexEnteries = append(indexEnteries, entry)
 	}
+
+	sort.Slice(indexEnteries, func(i, j int) bool {
+		return indexEnteries[i].Filepath < indexEnteries[j].Filepath
+	})
 
 	return indexEnteries
 }
