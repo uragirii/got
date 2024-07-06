@@ -17,10 +17,8 @@ const _NumFilesBytesLen int = 4
 // File metadata like ctime, mtime etc
 const _IndexEntryMetadataLen int = 62
 
-const _IndexEntrySizeLoc int = 36
-const _IndexEntrySHALoc int = _IndexEntrySizeLoc + 4
-const _IndexEntryNameLoc int = _IndexEntrySHALoc + SHA_BYTES_LEN + 2 // 2 bytes for 16 bits flags
 const _IndexEntryPaddingBytes int = 8
+const _32BitToByte = 32 / 8
 
 var _IndexFileHeader [4]byte = [4]byte{0x44, 0x49, 0x52, 0x43}           // DIRC
 var _IndexFileSupportedVersion [4]byte = [4]byte{0x00, 0x00, 0x00, 0x02} // Version 2
@@ -29,32 +27,121 @@ var _TreeExtensionHeader [4]byte = [4]byte{0x54, 0x52, 0x45, 0x45} // TREE
 const _TreeExtensionSize int = 4                                   // 4 bytes reserved for tree size
 
 type IndexEntry struct {
+	ctime     uint32
+	ctimeNano uint32
+	mtime     uint32
+	mtimeNano uint32
+	devId     uint32
+	inode     uint32
+	mode      uint32
+	uid       uint32
+	gid       uint32
+	Size      uint32
+	SHA       *SHA
+	flag      uint16
+	Filepath  string
+}
 
-	// ctime    uint64
-	// mtime    uint64
-	// devId    uint64
-	// inode    uint64
-	// mode     uint32
-	// uid      uint32
-	// gid      uint32
-	Size uint32
-	SHA  *SHA
-	// flag     uint16
-	Filepath string
+func parse32bit(data *[]byte, startIdx int) (uint32, error) {
+	num, err := strconv.ParseUint(fmt.Sprintf("%x", (*data)[startIdx:startIdx+_32BitToByte]), 16, 32)
+
+	return uint32(num), err
 }
 
 func newIndexEntry(entry *[]byte, start, end int) (*IndexEntry, error) {
-	sizeBytes := (*entry)[start+_IndexEntrySizeLoc : start+_IndexEntrySizeLoc+4]
-
-	shaBytes := (*entry)[start+_IndexEntrySHALoc : start+_IndexEntrySHALoc+20] // SHA is 20 bytes
-
-	filepath := (*entry)[start+_IndexEntryNameLoc : end]
-
-	size, err := byteSliceToInt(&sizeBytes)
+	ctimeSec, err := parse32bit(entry, start)
 
 	if err != nil {
 		return nil, err
 	}
+
+	start += _32BitToByte
+
+	ctimeNanoSec, err := parse32bit(entry, start)
+
+	if err != nil {
+		return nil, err
+	}
+	start += _32BitToByte
+
+	mtimeSec, err := parse32bit(entry, start)
+
+	if err != nil {
+		return nil, err
+	}
+	start += _32BitToByte
+
+	mtimeNanoSec, err := parse32bit(entry, start)
+
+	if err != nil {
+		return nil, err
+	}
+
+	start += _32BitToByte
+
+	dev, err := parse32bit(entry, start)
+
+	if err != nil {
+		return nil, err
+	}
+
+	start += _32BitToByte
+
+	ino, err := parse32bit(entry, start)
+
+	if err != nil {
+		return nil, err
+	}
+
+	start += _32BitToByte
+
+	mode, err := parse32bit(entry, start)
+
+	if err != nil {
+		return nil, err
+	}
+
+	start += _32BitToByte
+
+	uid, err := parse32bit(entry, start)
+
+	if err != nil {
+		return nil, err
+	}
+
+	start += _32BitToByte
+
+	gid, err := parse32bit(entry, start)
+
+	if err != nil {
+		return nil, err
+	}
+
+	start += _32BitToByte
+
+	size, err := parse32bit(entry, start)
+
+	if err != nil {
+		return nil, err
+	}
+
+	start += _32BitToByte
+
+	// todo: parse flags
+
+	flag, err := strconv.ParseUint(fmt.Sprintf("%x", (*entry)[start:start+2]), 16, 16)
+
+	if err != nil {
+		return nil, err
+	}
+
+	start += 2
+
+	shaBytes := (*entry)[start : start+SHA_BYTES_LEN]
+
+	start += SHA_BYTES_LEN
+
+	filepath := (*entry)[start:end]
 
 	sha, err := SHAFromByteSlice(&shaBytes)
 	if err != nil {
@@ -62,9 +149,19 @@ func newIndexEntry(entry *[]byte, start, end int) (*IndexEntry, error) {
 	}
 
 	return &IndexEntry{
-		Size:     uint32(size),
-		SHA:      sha,
-		Filepath: string(filepath),
+		Size:      uint32(size),
+		SHA:       sha,
+		Filepath:  string(filepath),
+		ctime:     ctimeSec,
+		ctimeNano: ctimeNanoSec,
+		mtime:     mtimeSec,
+		mtimeNano: mtimeNanoSec,
+		devId:     dev,
+		inode:     ino,
+		mode:      mode,
+		uid:       uid,
+		gid:       gid,
+		flag:      uint16(flag),
 	}, nil
 
 }
@@ -371,4 +468,8 @@ func (i *Index) GetTrackedFiles() []*IndexEntry {
 	})
 
 	return indexEnteries
+}
+
+func (i *Index) Write() {
+
 }
