@@ -38,7 +38,7 @@ type IndexEntry struct {
 	gid       uint32
 	Size      uint32
 	SHA       *SHA
-	flag      uint16
+	flag      uint64
 	Filepath  string
 }
 
@@ -127,7 +127,9 @@ func newIndexEntry(entry *[]byte, start, end int) (*IndexEntry, error) {
 
 	start += _32BitToByte
 
-	// todo: parse flags
+	shaBytes := (*entry)[start : start+SHA_BYTES_LEN]
+
+	start += SHA_BYTES_LEN
 
 	flag, err := strconv.ParseUint(fmt.Sprintf("%x", (*entry)[start:start+2]), 16, 16)
 
@@ -136,10 +138,6 @@ func newIndexEntry(entry *[]byte, start, end int) (*IndexEntry, error) {
 	}
 
 	start += 2
-
-	shaBytes := (*entry)[start : start+SHA_BYTES_LEN]
-
-	start += SHA_BYTES_LEN
 
 	filepath := (*entry)[start:end]
 
@@ -161,7 +159,7 @@ func newIndexEntry(entry *[]byte, start, end int) (*IndexEntry, error) {
 		mode:      mode,
 		uid:       uid,
 		gid:       gid,
-		flag:      uint16(flag),
+		flag:      flag,
 	}, nil
 
 }
