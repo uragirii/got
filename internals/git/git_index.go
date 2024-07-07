@@ -333,6 +333,37 @@ func newCacheTree(treeContents *[]byte) (*CacheTree, error) {
 	return cacheTree, err
 }
 
+func (tree CacheTree) Write(writer io.Writer) (int, error) {
+	bytesWritten := 0
+	n, _ := writer.Write([]byte(tree.relPath))
+	bytesWritten += n
+	n, _ = writer.Write([]byte{0x00})
+	bytesWritten += n
+
+	n, _ = writer.Write([]byte(fmt.Sprintf("%d", tree.entryCount)))
+	bytesWritten += n
+
+	n, _ = writer.Write([]byte{' '})
+	bytesWritten += n
+
+	n, _ = writer.Write([]byte(fmt.Sprintf("%d", tree.subTreesCount)))
+	bytesWritten += n
+
+	n, _ = writer.Write([]byte{'\n'})
+	bytesWritten += n
+
+	n, _ = writer.Write(*tree.sha.hash)
+	bytesWritten += n
+
+	for _, subTree := range tree.subTrees {
+		n, _ = subTree.Write(writer)
+		bytesWritten += n
+	}
+
+	return bytesWritten, nil
+
+}
+
 // @see https://git-scm.com/docs/index-format
 type Index struct {
 	fileMap   map[string]*IndexEntry
@@ -554,6 +585,20 @@ func (i *Index) Write() error {
 		entry.Write(&buffer)
 	}
 
+	buffer.Write(_TreeExtensionHeader[:])
+
+	var cacheTreeBuffer bytes.Buffer
+
+	i.cacheTree.Write(&cacheTreeBuffer)
+
+	writeUint32(uint32(cacheTreeBuffer.Len()), &buffer)
+
+	buffer.Write(cacheTreeBuffer.Bytes())
+
+	indexBytes := buffer.Bytes()
+
+	sha := sha1.Sum(indexBytes)
+
 	fi, err := os.Create("index")
 
 	if err != nil {
@@ -562,7 +607,13 @@ func (i *Index) Write() error {
 
 	defer fi.Close()
 
-	_, err = fi.Write(buffer.Bytes())
+	_, err = fi.Write(indexBytes)
+
+	if err != nil {
+		return err
+	}
+
+	_, err = fi.Write(sha[:])
 
 	if err != nil {
 		return err
