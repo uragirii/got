@@ -1,12 +1,16 @@
 package git
 
 import (
+	"bytes"
 	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"sort"
 	"strconv"
+	"syscall"
 
 	"github.com/uragirii/got/internals"
 )
@@ -27,19 +31,74 @@ var _TreeExtensionHeader [4]byte = [4]byte{0x54, 0x52, 0x45, 0x45} // TREE
 const _TreeExtensionSize int = 4                                   // 4 bytes reserved for tree size
 
 type IndexEntry struct {
-	ctime     uint32
-	ctimeNano uint32
-	mtime     uint32
-	mtimeNano uint32
-	devId     uint32
-	inode     uint32
-	mode      uint32
-	uid       uint32
-	gid       uint32
-	Size      uint32
-	SHA       *SHA
-	flag      uint64
-	Filepath  string
+	ctime    syscall.Timespec
+	mtime    syscall.Timespec
+	devId    uint32
+	inode    uint32
+	mode     uint32
+	uid      uint32
+	gid      uint32
+	Size     uint32
+	SHA      *SHA
+	flag     uint64
+	Filepath string
+}
+
+func writeUint32(num uint32, writer io.Writer) (int, error) {
+	bytes, _ := hex.DecodeString(fmt.Sprintf("%08x", num))
+
+	return writer.Write(bytes)
+}
+
+func (entry IndexEntry) Write(writer io.Writer) (int, error) {
+	bytesWritten := 0
+	n, _ := writeUint32(uint32(entry.ctime.Sec), writer)
+	bytesWritten += n
+	n, _ = writeUint32(uint32(entry.ctime.Nsec), writer)
+	bytesWritten += n
+	n, _ = writeUint32(uint32(entry.mtime.Sec), writer)
+	bytesWritten += n
+	n, _ = writeUint32(uint32(entry.mtime.Nsec), writer)
+	bytesWritten += n
+
+	n, _ = writeUint32(entry.devId, writer)
+	bytesWritten += n
+	n, _ = writeUint32(entry.inode, writer)
+	bytesWritten += n
+	n, _ = writeUint32(entry.mode, writer)
+	bytesWritten += n
+
+	n, _ = writeUint32(entry.uid, writer)
+	bytesWritten += n
+	n, _ = writeUint32(entry.gid, writer)
+	bytesWritten += n
+
+	n, _ = writeUint32(entry.Size, writer)
+
+	bytesWritten += n
+
+	n, _ = writer.Write(*entry.SHA.hash)
+
+	bytesWritten += n
+
+	flagBytes, _ := hex.DecodeString(fmt.Sprintf("%04x", entry.flag))
+
+	n, _ = writer.Write(flagBytes)
+	bytesWritten += n
+
+	n, _ = writer.Write([]byte(entry.Filepath))
+	bytesWritten += n
+
+	// The NULL byte is already accumulated inside the padding
+	// as minimum padding is 1 and max is 8
+
+	padding := _IndexEntryPaddingBytes - (bytesWritten % _IndexEntryPaddingBytes)
+
+	paddingSlice := make([]byte, padding)
+
+	n, _ = writer.Write(paddingSlice)
+
+	return bytesWritten + n, nil
 }
 
 func parse32bit(data *[]byte, startIdx int) (uint32, error) {
@@ -64,6 +123,11 @@ func newIndexEntry(entry *[]byte, start, end int) (*IndexEntry, error) {
 	}
 	start += _32BitToByte
 
+	cTime := syscall.Timespec{
+		Sec:  int64(ctimeSec),
+		Nsec: int64(ctimeNanoSec),
+	}
+
 	mtimeSec, err := parse32bit(entry, start)
 
 	if err != nil {
@@ -78,6 +142,11 @@ func newIndexEntry(entry *[]byte, start, end int) (*IndexEntry, error) {
 	}
 
 	start += _32BitToByte
+
+	mTime := syscall.Timespec{
+		Sec:  int64(mtimeSec),
+		Nsec: int64(mtimeNanoSec),
+	}
 
 	dev, err := parse32bit(entry, start)
 
@@ -147,19 +216,17 @@ func newIndexEntry(entry *[]byte, start, end int) (*IndexEntry, error) {
 	}
 
 	return &IndexEntry{
-		Size:      uint32(size),
-		SHA:       sha,
-		Filepath:  string(filepath),
-		ctime:     ctimeSec,
-		ctimeNano: ctimeNanoSec,
-		mtime:     mtimeSec,
-		mtimeNano: mtimeNanoSec,
-		devId:     dev,
-		inode:     ino,
-		mode:      mode,
-		uid:       uid,
-		gid:       gid,
-		flag:      flag,
+		Size:     uint32(size),
+		SHA:      sha,
+		Filepath: string(filepath),
+		ctime:    cTime,
+		mtime:    mTime,
+		devId:    dev,
+		inode:    ino,
+		mode:     mode,
+		uid:      uid,
+		gid:      gid,
+		flag:     flag,
 	}, nil
 
 }
@@ -468,6 +535,39 @@ func (i *Index) GetTrackedFiles() []*IndexEntry {
 	return indexEnteries
 }
 
-func (i *Index) Write() {
+func (i *Index) Write() error {
+	var buffer bytes.Buffer
+
+	buffer.Write(_IndexFileHeader[:])
+
+	buffer.Write(_IndexFileSupportedVersion[:])
+
+	fileEntries := i.GetTrackedFiles()
+
+	lenFileEntries := len(fileEntries)
+
+	lenFileEntriesBytes, _ := hex.DecodeString(fmt.Sprintf("%08x", lenFileEntries))
+
+	buffer.Write(lenFileEntriesBytes)
+
+	for _, entry := range fileEntries {
+		entry.Write(&buffer)
+	}
+
+	fi, err := os.Create("index")
+
+	if err != nil {
+		return err
+	}
+
+	defer fi.Close()
+
+	_, err = fi.Write(buffer.Bytes())
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 
 }
