@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/uragirii/got/internals"
-	"github.com/uragirii/got/internals/git"
+	"github.com/uragirii/got/internals/git/index"
 	"github.com/uragirii/got/internals/git/object"
 )
 
@@ -33,7 +33,7 @@ var LS_FILES *internals.Command = &internals.Command{
 
 func LsFiles(c *internals.Command, _ string) {
 
-	gitIndex, err := git.NewIndex()
+	gitIndex, err := index.New()
 
 	if err != nil {
 		panic(err)

@@ -1,4 +1,4 @@
-package git
+package head
 
 import (
 	"fmt"
@@ -7,23 +7,24 @@ import (
 	"strings"
 
 	"github.com/uragirii/got/internals"
+	"github.com/uragirii/got/internals/git/sha"
 )
 
 const _HeadFile string = "HEAD"
 const _Ref string = "ref: "
 const _BranchPrefix = "refs/heads/"
 
-type HeadMode int
+type Mode int
 
 const (
-	Detached HeadMode = iota
+	Detached Mode = iota
 	Branch
 	Tag
 )
 
 type Head struct {
-	SHA    *SHA
-	Mode   HeadMode
+	SHA    *sha.SHA
+	Mode   Mode
 	Branch string
 }
 
@@ -55,7 +56,7 @@ func parseRefHead(headContents string) (*Head, error) {
 
 	// Need to convert to string as the SHA in hex is stored as string
 	// in the file and the bytes are not ASCII for those hex characters
-	sha, err := SHAFromString(string(shaBytes))
+	sha, err := sha.FromString(string(shaBytes))
 
 	if err != nil {
 		return nil, err
@@ -68,7 +69,7 @@ func parseRefHead(headContents string) (*Head, error) {
 	}, nil
 }
 
-func NewHead() (*Head, error) {
+func New() (*Head, error) {
 	gitDir, err := internals.GetGitDir()
 
 	if err != nil {
@@ -93,7 +94,7 @@ func NewHead() (*Head, error) {
 	if len(headContents) != 20 {
 		return nil, ErrInvalidHead
 	} else {
-		sha, err := SHAFromString(headContents)
+		sha, err := sha.FromString(headContents)
 
 		if err != nil {
 			return nil, err

@@ -11,7 +11,7 @@ import (
 	"slices"
 
 	"github.com/uragirii/got/internals"
-	"github.com/uragirii/got/internals/git"
+	"github.com/uragirii/got/internals/git/sha"
 )
 
 type ObjectType string
@@ -33,10 +33,10 @@ type Object struct {
 	objectType ObjectType
 	// Also contains header for the object
 	uncompressedContents *[]byte
-	sha                  *git.SHA
+	sha                  *sha.SHA
 }
 
-func NewObjectFromSHA(sha *git.SHA) (*Object, error) {
+func NewObjectFromSHA(sha *sha.SHA) (*Object, error) {
 	objPath, err := getObjectPath(sha)
 
 	if err != nil {
@@ -125,7 +125,7 @@ func (obj *Object) Write() error {
 
 }
 
-func (obj *Object) GetSHA() *git.SHA {
+func (obj *Object) GetSHA() *sha.SHA {
 	return obj.sha
 }
 
@@ -144,7 +144,7 @@ func NewObject(filePath string) (*Object, error) {
 
 	hashSlice := hash[:]
 
-	sha, err := git.SHAFromByteSlice(&hashSlice)
+	sha, err := sha.FromByteSlice(&hashSlice)
 
 	if err != nil {
 		return nil, err
@@ -157,7 +157,7 @@ func NewObject(filePath string) (*Object, error) {
 	}, nil
 }
 
-func getObjectPath(sha *git.SHA) (string, error) {
+func getObjectPath(sha *sha.SHA) (string, error) {
 	gitDir, err := internals.GetGitDir()
 
 	if err != nil {

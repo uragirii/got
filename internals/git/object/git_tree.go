@@ -12,6 +12,7 @@ import (
 
 	"github.com/uragirii/got/internals"
 	"github.com/uragirii/got/internals/git"
+	"github.com/uragirii/got/internals/git/sha"
 )
 
 type Mode string
@@ -37,7 +38,7 @@ type treeEntry struct {
 	mode Mode
 	// Its not the complete path
 	name string
-	sha  *git.SHA
+	sha  *sha.SHA
 	tree *Tree
 }
 
@@ -73,7 +74,7 @@ func (entry *treeEntry) GetTree() (*Tree, error) {
 
 type Tree struct {
 	entries []treeEntry
-	sha     *git.SHA
+	sha     *sha.SHA
 }
 
 var ErrInvalidTree = fmt.Errorf("invalid tree")
@@ -110,11 +111,11 @@ func ToTree(obj *Object) (*Tree, error) {
 		currIdx++
 		startIdx = currIdx
 
-		currIdx += git.SHA_BYTES_LEN
+		currIdx += sha.BYTES_LEN
 
 		shaBytes := []byte(treeContents[startIdx:currIdx])
 
-		sha, err := git.SHAFromByteSlice(&shaBytes)
+		sha, err := sha.FromByteSlice(&shaBytes)
 
 		if err != nil {
 			return nil, err
@@ -134,7 +135,7 @@ func ToTree(obj *Object) (*Tree, error) {
 
 }
 
-func getSHAFromEntries(sortedEntries []treeEntry) (*git.SHA, error) {
+func getSHAFromEntries(sortedEntries []treeEntry) (*sha.SHA, error) {
 	var content strings.Builder
 
 	for _, entry := range sortedEntries {
@@ -150,7 +151,7 @@ func getSHAFromEntries(sortedEntries []treeEntry) (*git.SHA, error) {
 	hash := sha1.Sum(contentBytes)
 	hashSlice := hash[:]
 
-	return git.SHAFromByteSlice(&hashSlice)
+	return sha.FromByteSlice(&hashSlice)
 }
 
 func getModeFromAbsPath(absPath string) Mode {

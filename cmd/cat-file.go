@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/uragirii/got/internals"
-	"github.com/uragirii/got/internals/git"
 	"github.com/uragirii/got/internals/git/object"
+	"github.com/uragirii/got/internals/git/sha"
 )
 
 var CAT_FILE *internals.Command = &internals.Command{
@@ -72,7 +72,7 @@ var CAT_FILE *internals.Command = &internals.Command{
 func CatFile(c *internals.Command, gitDir string) {
 	argSha := c.Args[0]
 
-	sha, err := git.SHAFromString(argSha)
+	sha, err := sha.FromString(argSha)
 
 	if err != nil {
 		panic(err)

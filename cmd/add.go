@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"github.com/uragirii/got/internals"
-	"github.com/uragirii/got/internals/git"
+	"github.com/uragirii/got/internals/git/index"
 )
 
 var ADD *internals.Command = &internals.Command{
@@ -14,7 +14,7 @@ var ADD *internals.Command = &internals.Command{
 
 func Add(c *internals.Command, gitPath string) {
 
-	_, err := git.NewIndex()
+	_, err := index.New()
 
 	if err != nil {
 		panic(err)

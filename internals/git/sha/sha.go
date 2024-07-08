@@ -1,4 +1,4 @@
-package git
+package sha
 
 import (
 	"bytes"
@@ -7,8 +7,8 @@ import (
 	"strings"
 )
 
-const SHA_BYTES_LEN = 20
-const SHA_STR_LEN = SHA_BYTES_LEN * 2
+const BYTES_LEN = 20
+const STR_LEN = BYTES_LEN * 2
 
 type SHA struct {
 	hash *[]byte
@@ -24,7 +24,7 @@ func (sha *SHA) Eq(other *SHA) bool {
 	return true
 }
 
-func SHAFromByteSlice(byteSlice *[]byte) (*SHA, error) {
+func FromByteSlice(byteSlice *[]byte) (*SHA, error) {
 
 	trimmedBytes := bytes.Trim(*byteSlice, "\n")
 
@@ -33,14 +33,14 @@ func SHAFromByteSlice(byteSlice *[]byte) (*SHA, error) {
 	}, nil
 }
 
-func SHAFromString(shaStr string) (*SHA, error) {
+func FromString(shaStr string) (*SHA, error) {
 	byteSlice, err := hex.DecodeString(strings.Trim(shaStr, "\n"))
 
 	if err != nil {
 		return nil, err
 	}
 
-	return SHAFromByteSlice(&byteSlice)
+	return FromByteSlice(&byteSlice)
 }
 
 func (sha *SHA) MarshallToStr() string {

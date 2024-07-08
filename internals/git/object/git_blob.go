@@ -6,17 +6,17 @@ import (
 	"os"
 	"slices"
 
-	"github.com/uragirii/got/internals/git"
+	"github.com/uragirii/got/internals/git/sha"
 )
 
 type GitBlob struct {
 	contents *[]byte
-	SHA      *git.SHA
+	SHA      *sha.SHA
 }
 
 const _GitBlobHeader string = "blob %d\u0000"
 
-func MarshalGitBlobFromSHA(sha *git.SHA) (*GitBlob, error) {
+func MarshalGitBlobFromSHA(sha *sha.SHA) (*GitBlob, error) {
 	objPath, err := getObjectPath(sha)
 
 	if err != nil {
@@ -76,7 +76,7 @@ func MarshalGitBlobFromFile(filePath string) (*GitBlob, error) {
 	hashArr := sha1.Sum(blobContents)
 	hashSlice := hashArr[:]
 
-	sha, err := git.SHAFromByteSlice(&hashSlice)
+	sha, err := sha.FromByteSlice(&hashSlice)
 
 	if err != nil {
 		return nil, err

@@ -5,7 +5,7 @@ import (
 
 	"github.com/uragirii/got/internals"
 	"github.com/uragirii/got/internals/color"
-	"github.com/uragirii/got/internals/git"
+	"github.com/uragirii/got/internals/git/head"
 	"github.com/uragirii/got/internals/git/object"
 )
 
@@ -18,7 +18,7 @@ var STATUS *internals.Command = &internals.Command{
 
 func Status(c *internals.Command, gitPath string) {
 
-	head, err := git.NewHead()
+	head, err := head.New()
 
 	if err != nil {
 		panic(err)

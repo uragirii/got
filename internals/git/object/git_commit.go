@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/uragirii/got/internals/git"
+	"github.com/uragirii/got/internals/git/sha"
 )
 
 type Commit struct {
 	Tree      *Tree
-	parentSHA *git.SHA
-	sha       *git.SHA
+	parentSHA *sha.SHA
+	sha       *sha.SHA
 	message   string
 
 	// author Person
@@ -43,13 +43,13 @@ func ToCommit(obj *Object) (*Commit, error) {
 
 	// TODO: parse author and committer
 
-	treeSha, err := git.SHAFromString(strings.Split(treeLine, " ")[1])
+	treeSha, err := sha.FromString(strings.Split(treeLine, " ")[1])
 
 	if err != nil {
 		return nil, err
 	}
 
-	parentSha, err := git.SHAFromString(strings.Split(parentLine, " ")[1])
+	parentSha, err := sha.FromString(strings.Split(parentLine, " ")[1])
 
 	if err != nil {
 		return nil, err
