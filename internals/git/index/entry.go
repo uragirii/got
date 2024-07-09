@@ -15,7 +15,7 @@ type IndexEntry struct {
 	mtime    syscall.Timespec
 	devId    uint32
 	inode    uint32
-	mode     uint32
+	mode     *mode
 	uid      uint32
 	gid      uint32
 	Size     uint32
@@ -81,7 +81,13 @@ func newIndexEntry(entry *[]byte, start, end int) (*IndexEntry, error) {
 
 	start += _32BitToByte
 
-	mode, err := parse32bit(entry, start)
+	modeBits, err := parse32bit(entry, start)
+
+	if err != nil {
+		return nil, err
+	}
+
+	mode, err := modeFromUint32(modeBits)
 
 	if err != nil {
 		return nil, err
@@ -163,7 +169,8 @@ func (entry IndexEntry) Write(writer io.Writer) (int, error) {
 	bytesWritten += n
 	n, _ = writeUint32(entry.inode, writer)
 	bytesWritten += n
-	n, _ = writeUint32(entry.mode, writer)
+
+	n, _ = entry.mode.Write(writer)
 	bytesWritten += n
 
 	n, _ = writeUint32(entry.uid, writer)
