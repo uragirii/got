@@ -7,9 +7,13 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 	"sort"
+	"strings"
+	"syscall"
 
 	"github.com/uragirii/got/internals"
+	"github.com/uragirii/got/internals/git/object"
 	"github.com/uragirii/got/internals/git/sha"
 )
 
@@ -262,4 +266,50 @@ func (i *Index) Write() error {
 
 	return nil
 
+}
+
+// Adds the files to the index
+// provide rel Path for the file and not the matching pattern
+func (i *Index) Add(filePaths []string) error {
+	for _, filePath := range filePaths {
+		obj, err := object.NewObject(filePath)
+
+		if err != nil {
+			return err
+		}
+
+		var fileStat syscall.Stat_t
+
+		if err = syscall.Stat(filePath, &fileStat); err != nil {
+			return err
+		}
+
+		mode, err := modeFromFilePath(filePath)
+
+		if err != nil {
+			return err
+		}
+
+		i.fileMap[filePath] = &IndexEntry{
+			ctime: fileStat.Ctimespec,
+			mtime: fileStat.Mtimespec,
+			mode:  mode,
+			devId: uint32(fileStat.Dev),
+			uid:   uint32(fileStat.Uid),
+			gid:   uint32(fileStat.Gid),
+			inode: uint32(fileStat.Ino),
+			// fixme
+			// TODO: as other flag is always unset, this should be fine
+			flag:     uint64(len(filePath)),
+			Size:     uint32(fileStat.Size),
+			SHA:      obj.GetSHA(),
+			Filepath: filePath,
+		}
+
+		i.cacheTree.add(strings.Split(filepath.Dir(filePath), string(filepath.Separator)))
+	}
+
+	fmt.Println(i.cacheTree)
+
+	return nil
 }
