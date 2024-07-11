@@ -100,6 +100,7 @@ func newCacheTree(treeContents *[]byte) (*CacheTree, error) {
 			}
 
 			cacheTrees = append(cacheTrees, cacheTree)
+			continue
 		}
 
 		shaSlice := (*treeContents)[idx : idx+sha.BYTES_LEN]
