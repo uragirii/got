@@ -309,7 +309,5 @@ func (i *Index) Add(filePaths []string) error {
 		i.cacheTree.add(strings.Split(filepath.Dir(filePath), string(filepath.Separator)))
 	}
 
-	fmt.Println(i.cacheTree)
-
 	return nil
 }
