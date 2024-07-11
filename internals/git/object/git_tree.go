@@ -295,7 +295,7 @@ func (status ChangeStatus) String() string {
 	case StatusDeleted:
 		return "deleted "
 	case StatusAdded:
-		return "added"
+		return "new file"
 	}
 	return "invalid"
 }
@@ -309,6 +309,7 @@ const (
 type ChangeItem struct {
 	Status  ChangeStatus
 	RelPath string
+	SHA     *sha.SHA
 }
 
 // Call compare function on the Tree generated from git
@@ -365,6 +366,7 @@ func (tree Tree) Compare(other *Tree) ([]ChangeItem, error) {
 					changeChan <- ChangeItem{
 						Status:  StatusModified,
 						RelPath: entry.name,
+						SHA:     otherEntry.sha,
 					}
 				}(entry)
 
@@ -390,6 +392,7 @@ func (tree Tree) Compare(other *Tree) ([]ChangeItem, error) {
 						changeChan <- ChangeItem{
 							Status:  change.Status,
 							RelPath: path.Join(entry.name, change.RelPath),
+							SHA:     change.SHA,
 						}
 					}
 
@@ -415,6 +418,7 @@ func (tree Tree) Compare(other *Tree) ([]ChangeItem, error) {
 				changeChan <- ChangeItem{
 					Status:  StatusAdded,
 					RelPath: otherEntry.name,
+					SHA:     otherEntry.sha,
 				}
 			}(otherEntry)
 
@@ -429,6 +433,7 @@ func (tree Tree) Compare(other *Tree) ([]ChangeItem, error) {
 					changeChan <- ChangeItem{
 						Status:  StatusModified,
 						RelPath: otherEntry.name,
+						SHA:     otherEntry.sha,
 					}
 				}(otherEntry)
 
@@ -454,6 +459,7 @@ func (tree Tree) Compare(other *Tree) ([]ChangeItem, error) {
 						changeChan <- ChangeItem{
 							Status:  change.Status,
 							RelPath: path.Join(otherEntry.name, change.RelPath),
+							SHA:     change.SHA,
 						}
 					}
 
