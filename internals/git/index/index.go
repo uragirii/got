@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"syscall"
 
 	"github.com/uragirii/got/internals"
@@ -271,43 +272,60 @@ func (i *Index) Write() error {
 // Adds the files to the index
 // provide rel Path for the file and not the matching pattern
 func (i *Index) Add(filePaths []string) error {
+	var wg sync.WaitGroup
+
 	for _, filePath := range filePaths {
-		obj, err := object.NewObject(filePath)
+		wg.Add(1)
+		go func(filePath string) {
+			defer wg.Done()
 
-		if err != nil {
-			return err
-		}
+			obj, err := object.NewObject(filePath)
 
-		var fileStat syscall.Stat_t
+			if err != nil {
+				panic(err)
+			}
 
-		if err = syscall.Stat(filePath, &fileStat); err != nil {
-			return err
-		}
+			var fileStat syscall.Stat_t
 
-		mode, err := modeFromFilePath(filePath)
+			if err = syscall.Stat(filePath, &fileStat); err != nil {
+				panic(err)
+			}
 
-		if err != nil {
-			return err
-		}
+			mode, err := modeFromFilePath(filePath)
 
-		i.fileMap[filePath] = &IndexEntry{
-			ctime: fileStat.Ctimespec,
-			mtime: fileStat.Mtimespec,
-			mode:  mode,
-			devId: uint32(fileStat.Dev),
-			uid:   uint32(fileStat.Uid),
-			gid:   uint32(fileStat.Gid),
-			inode: uint32(fileStat.Ino),
-			// fixme
-			// TODO: as other flag is always unset, this should be fine
-			flag:     uint64(len(filePath)),
-			Size:     uint32(fileStat.Size),
-			SHA:      obj.GetSHA(),
-			Filepath: filePath,
-		}
+			if err != nil {
+				panic(err)
+			}
 
-		i.cacheTree.add(strings.Split(filepath.Dir(filePath), string(filepath.Separator)))
+			i.fileMap[filePath] = &IndexEntry{
+				ctime: fileStat.Ctimespec,
+				mtime: fileStat.Mtimespec,
+				mode:  mode,
+				devId: uint32(fileStat.Dev),
+				uid:   uint32(fileStat.Uid),
+				gid:   uint32(fileStat.Gid),
+				inode: uint32(fileStat.Ino),
+				// fixme
+				// TODO: as other flag is always unset, this should be fine
+				flag:     uint64(len(filePath)),
+				Size:     uint32(fileStat.Size),
+				SHA:      obj.GetSHA(),
+				Filepath: filePath,
+			}
+
+			i.cacheTree.add(strings.Split(filepath.Dir(filePath), string(filepath.Separator)))
+
+			err = obj.Write()
+
+			if err != nil {
+				panic(err)
+			}
+
+		}(filePath)
+
 	}
+
+	wg.Wait()
 
 	return nil
 }

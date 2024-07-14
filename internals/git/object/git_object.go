@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/zlib"
 	"crypto/sha1"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -109,20 +110,25 @@ func (obj *Object) Write() error {
 		return err
 	}
 
-	var compressBytes bytes.Buffer
+	// Only write if the object doesn't exist
+	if _, err := os.Stat(objPath); errors.Is(err, os.ErrNotExist) {
 
-	writer := zlib.NewWriter(&compressBytes)
+		var compressBytes bytes.Buffer
 
-	_, err = writer.Write(*obj.uncompressedContents)
+		writer := zlib.NewWriter(&compressBytes)
 
-	if err != nil {
-		return err
+		_, err = writer.Write(*obj.uncompressedContents)
+
+		if err != nil {
+			return err
+		}
+
+		writer.Close()
+
+		return os.WriteFile(objPath, compressBytes.Bytes(), 0444)
 	}
 
-	writer.Close()
-
-	return os.WriteFile(objPath, compressBytes.Bytes(), 0444)
-
+	return err
 }
 
 func (obj *Object) GetSHA() *sha.SHA {
