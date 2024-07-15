@@ -1,23 +1,21 @@
 # got
 
-A very basic git client written in golang. This project isn't meant to be a complete git client but a project for me to learn golang. I will only implement some very common used git commands and flags. My longterm goal is that this repo can be tracked by both the git client and the got binary. Probably use them interchangebly.
+A very basic git client written in golang. This project isn't meant to be a complete git client but a project for me to learn go. I will only implement some very common used git commands and flags. My longterm goal is that this repo can be tracked by both the git client and the got binary. Probably use them interchangebly.
 
-### List of commands implemented
+Current Progress: working on `git commit`, but before that I'm working on writing tests.
 
-As its not feasible to build a complete git clone, I've will only implement the most famous git commands used. Added support for :
+## Project Structure
 
-- [ ] git init
-- [ ] git add
-- [ ] git commit
-- [ ] git checkout
-- [ ] git push
-- [ ] git pull
+`/cmd` folder contains implemetation for each commands I've implemented. Currently, I've added support for `git init`, `git add`, `git status`. Along with them, I've also added `git ls-files`, `git hash-object`, `git cat-file` as they were used to debug and test some internal working of git.
 
-Along with the common ones I've also implemented a few complex ones that you probably won't use in daily life
+`/internals` contains all the internal stuff, `/internal/git` contains git internal implementation like `object`, `head`, `index` file parsing. File names should be self-explanatory.
 
-- [ ] git hash-object
-- [ ] git cat-file
+I have also documented my process on Twitter in [this thread](https://x.com/quacky_batak/status/1799424455586017747) (also check quote tweets)
+
+## Build and Run
+
+I have very simple `Makefile` just run `make got` and it should build the executable in `/build` folder.
 
 ## Found a bug / Have suggestions
 
-Great! please open a PR or an issue and I will probably look at it.
+Great! please open a PR or an issue and I will definately look at it.
