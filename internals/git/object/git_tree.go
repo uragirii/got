@@ -1,7 +1,10 @@
 package object
 
 import (
+	"bytes"
+	"compress/zlib"
 	"crypto/sha1"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -25,7 +28,7 @@ const (
 	ModeDir     Mode = "40000"
 )
 
-const _TreeHeader string = "blob %d\u0000"
+const _TreeHeader string = "tree %d\u0000"
 
 func (mode Mode) Pretty() string {
 	if mode == ModeDir {
@@ -34,20 +37,20 @@ func (mode Mode) Pretty() string {
 	return fmt.Sprintf("%s blob", mode)
 }
 
-type treeEntry struct {
-	mode Mode
+type TreeEntry struct {
+	Mode Mode
 	// Its not the complete path
-	name string
-	sha  *sha.SHA
+	Name string
+	SHA  *sha.SHA
 	tree *Tree
 }
 
-func (entry treeEntry) String() string {
-	return fmt.Sprintf("%s %s\t%s", entry.mode.Pretty(), entry.sha.MarshallToStr(), entry.name)
+func (entry TreeEntry) String() string {
+	return fmt.Sprintf("%s %s\t%s", entry.Mode.Pretty(), entry.SHA.MarshallToStr(), entry.Name)
 }
 
-func (entry *treeEntry) GetTree() (*Tree, error) {
-	if entry.mode != ModeDir {
+func (entry *TreeEntry) GetTree() (*Tree, error) {
+	if entry.Mode != ModeDir {
 		return nil, fmt.Errorf("GetTree called on File entry")
 	}
 
@@ -55,7 +58,7 @@ func (entry *treeEntry) GetTree() (*Tree, error) {
 		return entry.tree, nil
 	}
 
-	obj, err := NewObjectFromSHA(entry.sha)
+	obj, err := NewObjectFromSHA(entry.SHA)
 
 	if err != nil {
 		return nil, err
@@ -73,8 +76,8 @@ func (entry *treeEntry) GetTree() (*Tree, error) {
 }
 
 type Tree struct {
-	entries []treeEntry
-	sha     *sha.SHA
+	entries []TreeEntry
+	SHA     *sha.SHA
 }
 
 var ErrInvalidTree = fmt.Errorf("invalid tree")
@@ -86,7 +89,7 @@ func ToTree(obj *Object) (*Tree, error) {
 
 	treeContents := string(*obj.getContentWithoutHeader())
 
-	var entries []treeEntry
+	var entries []TreeEntry
 
 	for currIdx := 0; currIdx < len(treeContents); {
 
@@ -121,25 +124,25 @@ func ToTree(obj *Object) (*Tree, error) {
 			return nil, err
 		}
 
-		entries = append(entries, treeEntry{
-			mode: mode,
-			name: name,
-			sha:  sha,
+		entries = append(entries, TreeEntry{
+			Mode: mode,
+			Name: name,
+			SHA:  sha,
 		})
 	}
 
 	return &Tree{
 		entries: entries,
-		sha:     obj.sha,
+		SHA:     obj.sha,
 	}, nil
 
 }
 
-func getSHAFromEntries(sortedEntries []treeEntry) (*sha.SHA, error) {
+func getSHAFromEntries(sortedEntries []TreeEntry) (*sha.SHA, error) {
 	var content strings.Builder
 
 	for _, entry := range sortedEntries {
-		content.WriteString(fmt.Sprintf("%s %s\u0000%s", entry.mode, entry.name, entry.sha.GetBinStr()))
+		content.WriteString(fmt.Sprintf("%s %s\u0000%s", entry.Mode, entry.Name, entry.SHA.GetBinStr()))
 	}
 
 	contentLen := content.Len()
@@ -172,7 +175,7 @@ func getTreeForDir(dirPath string, ignore *git.Ignore) (*Tree, error) {
 		return nil, err
 	}
 
-	entries := make([]treeEntry, 0, len(items))
+	entries := make([]TreeEntry, 0, len(items))
 
 	ignoreFile, err := ignore.WithFile(path.Join(dirPath, ".gitignore"))
 
@@ -203,10 +206,10 @@ func getTreeForDir(dirPath string, ignore *git.Ignore) (*Tree, error) {
 						panic(err)
 					}
 
-					entries = append(entries, treeEntry{
-						mode: ModeDir,
-						name: entry.Name(),
-						sha:  subTree.sha,
+					entries = append(entries, TreeEntry{
+						Mode: ModeDir,
+						Name: entry.Name(),
+						SHA:  subTree.SHA,
 						tree: subTree,
 					})
 
@@ -225,10 +228,10 @@ func getTreeForDir(dirPath string, ignore *git.Ignore) (*Tree, error) {
 					panic(err)
 				}
 
-				entries = append(entries, treeEntry{
-					name: entry.Name(),
-					mode: getModeFromAbsPath(absPath),
-					sha:  obj.sha,
+				entries = append(entries, TreeEntry{
+					Name: entry.Name(),
+					Mode: getModeFromAbsPath(absPath),
+					SHA:  obj.sha,
 				})
 
 			}(entry, idx)
@@ -238,7 +241,7 @@ func getTreeForDir(dirPath string, ignore *git.Ignore) (*Tree, error) {
 	wg.Wait()
 
 	sort.Slice(entries, func(i, j int) bool {
-		return entries[i].name < entries[j].name
+		return entries[i].Name < entries[j].Name
 	})
 
 	sha, err := getSHAFromEntries(entries)
@@ -249,7 +252,7 @@ func getTreeForDir(dirPath string, ignore *git.Ignore) (*Tree, error) {
 
 	return &Tree{
 		entries: entries,
-		sha:     sha,
+		SHA:     sha,
 	}, nil
 
 }
@@ -271,6 +274,23 @@ func NewTree() (*Tree, error) {
 	}
 
 	return getTreeForDir(rootDir, ignore)
+}
+
+func TreeFromEnteries(enteries []TreeEntry) (*Tree, error) {
+	sort.Slice(enteries, func(i, j int) bool {
+		return enteries[i].Name < enteries[j].Name
+	})
+
+	sha, err := getSHAFromEntries(enteries)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &Tree{
+		entries: enteries,
+		SHA:     sha,
+	}, nil
 }
 
 func (tree Tree) String() string {
@@ -316,21 +336,21 @@ type ChangeItem struct {
 // then compare it with the Live Tree
 func (tree Tree) Compare(other *Tree) ([]ChangeItem, error) {
 
-	if tree.sha.Eq(other.sha) {
+	if tree.SHA.Eq(other.SHA) {
 		return []ChangeItem{}, nil
 	}
 
-	treeNames := make(map[string]*treeEntry, len(tree.entries))
-	otherTreeNames := make(map[string]*treeEntry, len(other.entries))
+	treeNames := make(map[string]*TreeEntry, len(tree.entries))
+	otherTreeNames := make(map[string]*TreeEntry, len(other.entries))
 
 	changeChan := make(chan ChangeItem)
 
 	for _, entry := range tree.entries {
-		treeNames[entry.name] = &entry
+		treeNames[entry.Name] = &entry
 	}
 
 	for _, entry := range other.entries {
-		otherTreeNames[entry.name] = &entry
+		otherTreeNames[entry.Name] = &entry
 	}
 
 	var wg sync.WaitGroup
@@ -338,35 +358,35 @@ func (tree Tree) Compare(other *Tree) ([]ChangeItem, error) {
 	visited := make(map[string]bool)
 
 	for _, entry := range tree.entries {
-		otherEntry, ok := otherTreeNames[entry.name]
+		otherEntry, ok := otherTreeNames[entry.Name]
 
-		visited[entry.name] = true
+		visited[entry.Name] = true
 
 		if !ok {
 			// Item is deleted
 			wg.Add(1)
 			// Need to wrap this in goroutine as channel is unbuffered
-			go func(entry treeEntry) {
+			go func(entry TreeEntry) {
 				defer wg.Done()
 
 				changeChan <- ChangeItem{
 					Status:  StatusDeleted,
-					RelPath: entry.name,
+					RelPath: entry.Name,
 				}
 			}(entry)
 
-		} else if !entry.sha.Eq(otherEntry.sha) {
+		} else if !entry.SHA.Eq(otherEntry.SHA) {
 			// Item is modified
 
-			if entry.mode != ModeDir {
+			if entry.Mode != ModeDir {
 				wg.Add(1)
-				go func(entry treeEntry) {
+				go func(entry TreeEntry) {
 					defer wg.Done()
 
 					changeChan <- ChangeItem{
 						Status:  StatusModified,
-						RelPath: entry.name,
-						SHA:     otherEntry.sha,
+						RelPath: entry.Name,
+						SHA:     otherEntry.SHA,
 					}
 				}(entry)
 
@@ -379,7 +399,7 @@ func (tree Tree) Compare(other *Tree) ([]ChangeItem, error) {
 
 				wg.Add(1)
 
-				go func(entry treeEntry) {
+				go func(entry TreeEntry) {
 					defer wg.Done()
 
 					subChanges, err := entryTree.Compare(otherEntry.tree)
@@ -391,7 +411,7 @@ func (tree Tree) Compare(other *Tree) ([]ChangeItem, error) {
 					for _, change := range subChanges {
 						changeChan <- ChangeItem{
 							Status:  change.Status,
-							RelPath: path.Join(entry.name, change.RelPath),
+							RelPath: path.Join(entry.Name, change.RelPath),
 							SHA:     change.SHA,
 						}
 					}
@@ -404,36 +424,36 @@ func (tree Tree) Compare(other *Tree) ([]ChangeItem, error) {
 	}
 
 	for _, otherEntry := range other.entries {
-		entry, ok := treeNames[otherEntry.name]
+		entry, ok := treeNames[otherEntry.Name]
 
-		if visited[otherEntry.name] {
+		if visited[otherEntry.Name] {
 			continue
 		}
 
 		if !ok {
 			// Item is Added
 			wg.Add(1)
-			go func(otherEntry treeEntry) {
+			go func(otherEntry TreeEntry) {
 				defer wg.Done()
 				changeChan <- ChangeItem{
 					Status:  StatusAdded,
-					RelPath: otherEntry.name,
-					SHA:     otherEntry.sha,
+					RelPath: otherEntry.Name,
+					SHA:     otherEntry.SHA,
 				}
 			}(otherEntry)
 
-		} else if !entry.sha.Eq(otherEntry.sha) {
+		} else if !entry.SHA.Eq(otherEntry.SHA) {
 			// Item is modified
 
-			if entry.mode != ModeDir {
+			if entry.Mode != ModeDir {
 				wg.Add(1)
-				go func(otherEntry treeEntry) {
+				go func(otherEntry TreeEntry) {
 					defer wg.Done()
 
 					changeChan <- ChangeItem{
 						Status:  StatusModified,
-						RelPath: otherEntry.name,
-						SHA:     otherEntry.sha,
+						RelPath: otherEntry.Name,
+						SHA:     otherEntry.SHA,
 					}
 				}(otherEntry)
 
@@ -446,7 +466,7 @@ func (tree Tree) Compare(other *Tree) ([]ChangeItem, error) {
 
 				wg.Add(1)
 
-				go func(otherEntry treeEntry) {
+				go func(otherEntry TreeEntry) {
 					defer wg.Done()
 
 					subChanges, err := entryTree.Compare(otherEntry.tree)
@@ -458,7 +478,7 @@ func (tree Tree) Compare(other *Tree) ([]ChangeItem, error) {
 					for _, change := range subChanges {
 						changeChan <- ChangeItem{
 							Status:  change.Status,
-							RelPath: path.Join(otherEntry.name, change.RelPath),
+							RelPath: path.Join(otherEntry.Name, change.RelPath),
 							SHA:     change.SHA,
 						}
 					}
@@ -482,4 +502,46 @@ func (tree Tree) Compare(other *Tree) ([]ChangeItem, error) {
 	}
 
 	return changeItems, nil
+}
+
+func (tree Tree) Write() error {
+	objPath, err := getObjectPath(tree.SHA)
+
+	if err != nil {
+		return err
+	}
+
+	// Only write if the object doesn't exist
+	if _, err := os.Stat(objPath); errors.Is(err, os.ErrNotExist) {
+		var buffer bytes.Buffer
+
+		contents := tree.String()
+
+		buffer.WriteString(fmt.Sprintf(_TreeHeader, len(contents)))
+		buffer.WriteString(contents)
+
+		var compressBytes bytes.Buffer
+
+		writer := zlib.NewWriter(&compressBytes)
+
+		_, err = writer.Write(buffer.Bytes())
+
+		if err != nil {
+			return err
+		}
+
+		writer.Close()
+
+		err = os.MkdirAll(path.Join(objPath, ".."), 0755)
+
+		if err != nil {
+			return err
+		}
+
+		return os.WriteFile(objPath, compressBytes.Bytes(), 0444)
+
+	}
+
+	return nil
+
 }
