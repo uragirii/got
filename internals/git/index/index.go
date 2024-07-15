@@ -329,3 +329,24 @@ func (i *Index) Add(filePaths []string) error {
 
 	return nil
 }
+
+func (i *Index) Hydrate() error {
+
+	gitDir, err := internals.GetGitDir()
+
+	if err != nil {
+		return err
+	}
+
+	entryCount, err := i.cacheTree.Hydrate(path.Join(gitDir, ".."), i)
+
+	if err != nil {
+		return err
+	}
+
+	if entryCount != len(i.fileMap) {
+		return fmt.Errorf("expected %d enteries found %d", len(i.fileMap), entryCount)
+	}
+
+	return nil
+}

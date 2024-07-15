@@ -3,19 +3,24 @@ package index
 import (
 	"fmt"
 	"io"
+	"os"
+	"path"
+	"path/filepath"
 	"sort"
 	"strconv"
 
+	"github.com/uragirii/got/internals"
+	"github.com/uragirii/got/internals/git/object"
 	"github.com/uragirii/got/internals/git/sha"
 )
 
 type CacheTree struct {
-	relPath       string
-	entryCount    int
-	subTrees      []*CacheTree
-	sha           *sha.SHA
-	subTreesCount int
-	isInvalidated bool
+	RelPath       string
+	EntryCount    int
+	SubTrees      []*CacheTree
+	SHA           *sha.SHA
+	SubTreesCount int
+	IsInvalidated bool
 }
 
 func parseCacheTreeArrToTree(cacheTreeArr *[]*CacheTree, startIdx int) (*CacheTree, int, error) {
@@ -25,11 +30,11 @@ func parseCacheTreeArrToTree(cacheTreeArr *[]*CacheTree, startIdx int) (*CacheTr
 
 	cacheTree := (*cacheTreeArr)[startIdx]
 
-	subTrees := make([]*CacheTree, 0, cacheTree.subTreesCount)
+	subTrees := make([]*CacheTree, 0, cacheTree.SubTreesCount)
 
 	idx := startIdx + 1
 
-	for range cacheTree.subTreesCount {
+	for range cacheTree.SubTreesCount {
 		subTree, newIdx, err := parseCacheTreeArrToTree(cacheTreeArr, idx)
 
 		if err != nil {
@@ -41,7 +46,7 @@ func parseCacheTreeArrToTree(cacheTreeArr *[]*CacheTree, startIdx int) (*CacheTr
 		idx = newIdx
 	}
 
-	cacheTree.subTrees = subTrees
+	cacheTree.SubTrees = subTrees
 
 	return cacheTree, idx, nil
 }
@@ -93,10 +98,10 @@ func newCacheTree(treeContents *[]byte) (*CacheTree, error) {
 		//When writing an invalid entry, -1 should always be used as entry_count.
 		if entryCount < 0 {
 			cacheTree := &CacheTree{
-				relPath:       relPath,
-				entryCount:    entryCount,
-				subTreesCount: subTreeCount,
-				isInvalidated: true,
+				RelPath:       relPath,
+				EntryCount:    entryCount,
+				SubTreesCount: subTreeCount,
+				IsInvalidated: true,
 			}
 
 			cacheTrees = append(cacheTrees, cacheTree)
@@ -114,11 +119,11 @@ func newCacheTree(treeContents *[]byte) (*CacheTree, error) {
 		}
 
 		cacheTree := &CacheTree{
-			relPath:       relPath,
-			entryCount:    entryCount,
-			sha:           sha,
-			subTreesCount: subTreeCount,
-			isInvalidated: false,
+			RelPath:       relPath,
+			EntryCount:    entryCount,
+			SHA:           sha,
+			SubTreesCount: subTreeCount,
+			IsInvalidated: false,
 		}
 
 		cacheTrees = append(cacheTrees, cacheTree)
@@ -131,43 +136,43 @@ func newCacheTree(treeContents *[]byte) (*CacheTree, error) {
 
 func (tree CacheTree) Write(writer io.Writer) (int, error) {
 	bytesWritten := 0
-	n, _ := writer.Write([]byte(tree.relPath))
+	n, _ := writer.Write([]byte(tree.RelPath))
 	bytesWritten += n
 	n, _ = writer.Write([]byte{0x00})
 	bytesWritten += n
 
-	n, _ = writer.Write([]byte(fmt.Sprintf("%d", tree.entryCount)))
+	n, _ = writer.Write([]byte(fmt.Sprintf("%d", tree.EntryCount)))
 	bytesWritten += n
 
 	n, _ = writer.Write([]byte{' '})
 	bytesWritten += n
 
-	n, _ = writer.Write([]byte(fmt.Sprintf("%d", tree.subTreesCount)))
+	n, _ = writer.Write([]byte(fmt.Sprintf("%d", tree.SubTreesCount)))
 	bytesWritten += n
 
 	n, _ = writer.Write([]byte{'\n'})
 	bytesWritten += n
 
-	if !tree.isInvalidated {
-		n, _ = writer.Write(*tree.sha.GetBytes())
+	if !tree.IsInvalidated {
+		n, _ = writer.Write(*tree.SHA.GetBytes())
 		bytesWritten += n
 	}
 
-	sort.Slice(tree.subTrees, func(i, j int) bool {
+	sort.Slice(tree.SubTrees, func(i, j int) bool {
 		// Sorted differently
 		// @see https://github.com/git/git/blob/557ae147e6cdc9db121269b058c757ac5092f9c9/cache-tree.c#L47
-		if len(tree.subTrees[i].relPath) < len(tree.subTrees[j].relPath) {
+		if len(tree.SubTrees[i].RelPath) < len(tree.SubTrees[j].RelPath) {
 			return true
 		}
-		if len(tree.subTrees[j].relPath) < len(tree.subTrees[i].relPath) {
+		if len(tree.SubTrees[j].RelPath) < len(tree.SubTrees[i].RelPath) {
 			return false
 		}
 
-		return tree.subTrees[j].relPath < tree.subTrees[i].relPath
+		return tree.SubTrees[j].RelPath < tree.SubTrees[i].RelPath
 
 	})
 
-	for _, subTree := range tree.subTrees {
+	for _, subTree := range tree.SubTrees {
 		n, _ = subTree.Write(writer)
 		bytesWritten += n
 	}
@@ -178,27 +183,27 @@ func (tree CacheTree) Write(writer io.Writer) (int, error) {
 func (tree *CacheTree) add(splittedFilePath []string) {
 
 	if len(splittedFilePath) == 0 {
-		tree.entryCount = -1
-		tree.isInvalidated = true
+		tree.EntryCount = -1
+		tree.IsInvalidated = true
 
 		return
 	}
 
 	// base path
-	if splittedFilePath[0] == "." && tree.relPath == "" {
-		tree.entryCount = -1
-		tree.isInvalidated = true
+	if splittedFilePath[0] == "." && tree.RelPath == "" {
+		tree.EntryCount = -1
+		tree.IsInvalidated = true
 
 		return
 	}
 
-	tree.entryCount = -1
-	tree.isInvalidated = true
+	tree.EntryCount = -1
+	tree.IsInvalidated = true
 
 	first := splittedFilePath[0]
 
-	for _, subTree := range tree.subTrees {
-		if subTree.relPath == first {
+	for _, subTree := range tree.SubTrees {
+		if subTree.RelPath == first {
 
 			subTree.add(splittedFilePath[1:])
 			return
@@ -210,16 +215,121 @@ func (tree *CacheTree) add(splittedFilePath []string) {
 	sha, _ := sha.FromByteSlice(&emptySlice)
 
 	subTree := CacheTree{
-		relPath:       first,
-		entryCount:    0,
-		subTrees:      make([]*CacheTree, 0),
-		sha:           sha,
-		subTreesCount: 0,
+		RelPath:       first,
+		EntryCount:    0,
+		SubTrees:      make([]*CacheTree, 0),
+		SHA:           sha,
+		SubTreesCount: 0,
 	}
 
-	tree.subTrees = append(tree.subTrees, &subTree)
-	tree.subTreesCount++
+	tree.SubTrees = append(tree.SubTrees, &subTree)
+	tree.SubTreesCount++
 
 	subTree.add(splittedFilePath[1:])
+}
 
+func (tree *CacheTree) Hydrate(basePath string, index *Index) (int, error) {
+
+	if !tree.IsInvalidated || tree.EntryCount > 0 {
+		tree.IsInvalidated = false
+		return tree.EntryCount, nil
+	}
+
+	fmt.Println("invalidating ", tree.RelPath)
+
+	gitDir, err := internals.GetGitDir()
+
+	if err != nil {
+		return 0, err
+	}
+
+	rootDir := path.Join(gitDir, "..")
+
+	dirPath := path.Join(basePath, tree.RelPath)
+
+	items, err := os.ReadDir(dirPath)
+
+	if err != nil {
+		return 0, err
+	}
+
+	entryCount := 0
+
+	enteries := make([]object.TreeEntry, 0, len(items))
+
+	relDirPath, err := filepath.Rel(rootDir, dirPath)
+
+	if err != nil {
+		return 0, err
+	}
+
+	for _, item := range items {
+		if item.IsDir() {
+			continue
+		}
+
+		// only deal while file items
+
+		filePath := path.Join(relDirPath, item.Name())
+
+		// file is in gitignore possibly
+		if !index.Has(filePath) {
+			fmt.Println("ignoring", filePath)
+			continue
+		}
+
+		indexEntry := index.Get(filePath)
+
+		enteries = append(enteries, object.TreeEntry{
+			Name: item.Name(),
+			SHA:  indexEntry.SHA,
+			// TODO: Fixme check mode from index file and then check
+			Mode: object.ModeNormal,
+		})
+		entryCount++
+
+	}
+
+	if tree.RelPath == "object" {
+		fmt.Println("Entrycount", entryCount)
+	}
+
+	for _, subTree := range tree.SubTrees {
+		subTreeEntryCount, err := subTree.Hydrate(dirPath, index)
+
+		if err != nil {
+			return 0, nil
+		}
+		fmt.Println("\thydrate", subTree.RelPath, subTreeEntryCount)
+
+		entryCount += subTreeEntryCount
+
+		enteries = append(enteries, object.TreeEntry{
+			Name: subTree.RelPath,
+			SHA:  subTree.SHA,
+			Mode: object.ModeDir,
+		})
+	}
+
+	gitTree, err := object.TreeFromEnteries(enteries)
+
+	if err != nil {
+		fmt.Println("err gitTree", entryCount)
+
+		return 0, nil
+	}
+
+	tree.EntryCount = entryCount
+
+	tree.SHA = gitTree.SHA
+
+	err = gitTree.Write()
+
+	if err != nil {
+		fmt.Println("err write", entryCount, err)
+
+		return 0, nil
+	}
+
+	return entryCount, nil
 }
