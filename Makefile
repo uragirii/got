@@ -5,3 +5,6 @@ run:
 
 got: $(SOURCES)
 	go build -o build/got
+
+test:
+	go test ./...

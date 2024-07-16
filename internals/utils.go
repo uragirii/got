@@ -9,6 +9,13 @@ func GetGitDir() (string, error) {
 		return GIT_DIR, nil
 	}
 
+	envGitDir := os.Getenv("GIT_DIR")
+
+	if envGitDir != "" {
+		GIT_DIR = envGitDir
+		return GIT_DIR, nil
+	}
+
 	cwd, err := os.Getwd()
 
 	if err != nil {
