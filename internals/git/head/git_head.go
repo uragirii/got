@@ -1,8 +1,10 @@
 package head
 
 import (
+	"bytes"
 	"fmt"
-	"os"
+	"io"
+	"io/fs"
 	"path"
 	"strings"
 
@@ -11,7 +13,9 @@ import (
 )
 
 const _HeadFile string = "HEAD"
-const _Ref string = "ref: "
+
+var _Ref = []byte("ref: ")
+
 const _BranchPrefix = "refs/heads/"
 
 type Mode int
@@ -30,20 +34,28 @@ type Head struct {
 
 var ErrInvalidHead = fmt.Errorf("invalid HEAD")
 
-func parseRefHead(headContents string) (*Head, error) {
+func newRefHead(headData []byte, fs fs.FS) (*Head, error) {
 	gitDir, err := internals.GetGitDir()
 
 	if err != nil {
 		return nil, err
 	}
 
-	refPath := headContents[len(_Ref):]
+	refPath := string(headData[len(_Ref):])
 
-	shaBytes, err := os.ReadFile(path.Join(gitDir, refPath))
+	branchFile, err := fs.Open(path.Join(gitDir, refPath))
 
 	if err != nil {
 		return nil, err
 	}
+
+	defer branchFile.Close()
+
+	var buffer bytes.Buffer
+
+	buffer.ReadFrom(branchFile)
+
+	shaBytes := buffer.Bytes()
 
 	var branch string
 
@@ -69,7 +81,43 @@ func parseRefHead(headContents string) (*Head, error) {
 	}, nil
 }
 
-func New() (*Head, error) {
+func newDetachedHead(headData []byte) (*Head, error) {
+	if len(headData) != sha.STR_LEN {
+		return nil, ErrInvalidHead
+	}
+
+	// the contents are SHA
+	headSHA, err := sha.FromString(string(headData))
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &Head{
+		SHA:  headSHA,
+		Mode: Detached,
+	}, nil
+}
+
+func newHead(headFile io.Reader, fs fs.FS) (*Head, error) {
+	headContents, err := io.ReadAll(headFile)
+
+	if err != nil {
+		return nil, err
+	}
+
+	headLine := bytes.TrimRight(headContents, "\n")
+
+	// read the ref file
+	if bytes.HasPrefix(headLine, _Ref) {
+		return newRefHead(headLine, fs)
+	}
+
+	return newDetachedHead(headLine)
+
+}
+
+func New(fs fs.FS) (*Head, error) {
 	gitDir, err := internals.GetGitDir()
 
 	if err != nil {
@@ -78,32 +126,14 @@ func New() (*Head, error) {
 
 	headFilePath := path.Join(gitDir, _HeadFile)
 
-	headByteContents, err := os.ReadFile(headFilePath)
+	headFile, err := fs.Open(headFilePath)
 
 	if err != nil {
 		return nil, err
 	}
 
-	headContents := strings.Trim(string(headByteContents), "\n")
+	defer headFile.Close()
 
-	if strings.HasPrefix(headContents, _Ref) {
-		return parseRefHead(headContents)
-	}
-
-	// Detached head mode
-	if len(headContents) != 20 {
-		return nil, ErrInvalidHead
-	} else {
-		sha, err := sha.FromString(headContents)
-
-		if err != nil {
-			return nil, err
-		}
-
-		return &Head{
-			SHA:  sha,
-			Mode: Detached,
-		}, nil
-	}
+	return newHead(headFile, fs)
 
 }
