@@ -20,13 +20,7 @@ type SHA struct {
 }
 
 func (sha *SHA) Eq(other *SHA) bool {
-	for i, b := range *sha.hash {
-		if (*other.hash)[i] != b {
-			return false
-		}
-	}
-
-	return true
+	return bytes.Equal(*sha.hash, *other.hash)
 }
 
 func FromByteSlice(byteSlice *[]byte) (*SHA, error) {
