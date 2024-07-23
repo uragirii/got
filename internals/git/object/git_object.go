@@ -3,26 +3,13 @@ package object
 import (
 	"bytes"
 	"compress/zlib"
-	"crypto/sha1"
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
-	"path"
-	"slices"
 
-	"github.com/uragirii/got/internals"
 	"github.com/uragirii/got/internals/git/sha"
-)
-
-type ObjectType string
-
-const _ObjectsDir string = "objects"
-
-const (
-	BlobObj   ObjectType = "blob"
-	TreeObj   ObjectType = "tree"
-	CommitObj ObjectType = "commit"
 )
 
 var ErrInvalidObj = fmt.Errorf("invalid git object")
@@ -37,26 +24,28 @@ type Object struct {
 	sha                  *sha.SHA
 }
 
-func NewObjectFromSHA(sha *sha.SHA) (*Object, error) {
-	objPath, err := getObjectPath(sha)
+func FromSHA(sha *sha.SHA, fs fs.FS) (*Object, error) {
+	objPath, err := sha.GetObjPath()
 
 	if err != nil {
 		return nil, err
 	}
 
-	contents, err := os.ReadFile(objPath)
+	objFile, err := fs.Open(objPath)
 
 	if err != nil {
 		return nil, err
 	}
 
-	decompressedContents, err := decompressObj(&contents)
+	defer objFile.Close()
+
+	decompressedContents, err := Decompress(objFile)
 
 	if err != nil {
 		return nil, err
 	}
 
-	objType, err := getObjType(decompressedContents)
+	objType, err := GetType(decompressedContents)
 
 	if err != nil {
 		return nil, err
@@ -69,32 +58,6 @@ func NewObjectFromSHA(sha *sha.SHA) (*Object, error) {
 	}, nil
 }
 
-func (obj *Object) getContentWithoutHeader() *[]byte {
-	for i := 0; i < len(*obj.uncompressedContents); i++ {
-		if (*obj.uncompressedContents)[i] == '\u0000' {
-			contents := (*obj.uncompressedContents)[i+1:]
-			return &contents
-		}
-	}
-
-	return nil
-}
-
-// TODO:
-// Pretty print the obj
-func (obj *Object) String() string {
-	if obj.objectType == TreeObj {
-		tree, err := ToTree(obj)
-
-		if err != nil {
-			panic(err)
-		}
-
-		return tree.String()
-	}
-	return fmt.Sprint(string(*obj.getContentWithoutHeader()))
-}
-
 func (obj *Object) RawString() string {
 	return fmt.Sprint(string(*(obj.getContentWithoutHeader())))
 }
@@ -103,40 +66,51 @@ func (obj *Object) GetObjType() ObjectType {
 	return obj.objectType
 }
 
-func (obj *Object) Write() error {
-	objPath, err := getObjectPath(obj.sha)
+func (obj *Object) Write(w io.Writer) error {
+
+	writer := zlib.NewWriter(w)
+
+	_, err := writer.Write(*obj.uncompressedContents)
 
 	if err != nil {
 		return err
 	}
 
-	// Only write if the object doesn't exist
+	writer.Close()
+
+	return nil
+}
+
+func (obj *Object) WriteToFile() error {
+	objPath, err := obj.sha.GetObjPath()
+
+	if err != nil {
+		return err
+	}
+
 	if _, err := os.Stat(objPath); errors.Is(err, os.ErrNotExist) {
 
 		var compressBytes bytes.Buffer
 
-		writer := zlib.NewWriter(&compressBytes)
-
-		_, err = writer.Write(*obj.uncompressedContents)
+		err := obj.Write(&compressBytes)
 
 		if err != nil {
 			return err
 		}
 
-		writer.Close()
-
 		return os.WriteFile(objPath, compressBytes.Bytes(), 0444)
 	}
-
-	return err
+	return nil
 }
 
 func (obj *Object) GetSHA() *sha.SHA {
 	return obj.sha
 }
 
-func NewObject(filePath string) (*Object, error) {
-	data, err := os.ReadFile(filePath)
+// Creates a new object from the raw file
+// It doesn't read the existing object, instead hashes a file
+func FromFile(reader io.Reader) (*Object, error) {
+	data, err := io.ReadAll(reader)
 
 	if err != nil {
 		return nil, err
@@ -146,11 +120,7 @@ func NewObject(filePath string) (*Object, error) {
 
 	contents := append(header, data...)
 
-	hash := sha1.Sum(contents)
-
-	hashSlice := hash[:]
-
-	sha, err := sha.FromByteSlice(&hashSlice)
+	sha, err := sha.FromData(&contents)
 
 	if err != nil {
 		return nil, err
@@ -161,71 +131,4 @@ func NewObject(filePath string) (*Object, error) {
 		uncompressedContents: &contents,
 		sha:                  sha,
 	}, nil
-}
-
-func getObjectPath(sha *sha.SHA) (string, error) {
-	gitDir, err := internals.GetGitDir()
-
-	if err != nil {
-		return "", err
-	}
-
-	objectsDir := path.Join(gitDir, _ObjectsDir)
-
-	shaStr := sha.MarshallToStr()
-
-	objPath := path.Join(objectsDir, shaStr[0:2], shaStr[2:])
-
-	return objPath, nil
-}
-
-func decompressObj(contents *[]byte) (*[]byte, error) {
-	b := bytes.NewReader(*contents)
-
-	reader, err := zlib.NewReader(b)
-
-	if err != nil {
-		return nil, err
-	}
-
-	uncompressed, err := io.ReadAll(reader)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return &uncompressed, nil
-}
-
-func getObjType(decompressedContents *[]byte) (ObjectType, error) {
-	headerEndIdx := slices.Index(*decompressedContents, 0x00)
-
-	if headerEndIdx == -1 {
-		return BlobObj, ErrInvalidObj
-	}
-
-	header := (*decompressedContents)[:headerEndIdx]
-
-	headerSpaceIdx := slices.Index(header, 0x20) // SPACE
-
-	if headerSpaceIdx == -1 {
-		return BlobObj, ErrInvalidObj
-	}
-
-	objType := string(header[:headerSpaceIdx])
-
-	switch objType {
-	case string(BlobObj):
-		return BlobObj, nil
-
-	case string(TreeObj):
-		return TreeObj, nil
-
-	case string(CommitObj):
-		return CommitObj, nil
-
-	default:
-		return BlobObj, ErrInvalidObj
-
-	}
 }
