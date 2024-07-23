@@ -16,8 +16,8 @@ type GitBlob struct {
 
 const _GitBlobHeader string = "blob %d\u0000"
 
-func MarshalGitBlobFromSHA(sha *sha.SHA) (*GitBlob, error) {
-	objPath, err := getObjectPath(sha)
+func FromSHA(sha *sha.SHA) (*GitBlob, error) {
+	objPath, err := sha.GetObjPath()
 
 	if err != nil {
 		return nil, err
@@ -62,7 +62,7 @@ func (blob *GitBlob) PrettyPrint() {
 	fmt.Println(string(*blob.contents))
 }
 
-func MarshalGitBlobFromFile(filePath string) (*GitBlob, error) {
+func FromFile(filePath string) (*GitBlob, error) {
 	fileContents, err := os.ReadFile(filePath)
 
 	if err != nil {
