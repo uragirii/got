@@ -1,6 +1,7 @@
 package sha_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/uragirii/got/internals/git/sha"
@@ -61,6 +62,45 @@ func TestEq(t *testing.T) {
 
 	if !sha1.Eq(sha2) {
 		t.Fatalf("Expected two SHAs to be equal")
+	}
+
+}
+
+func TestGetObjPath(t *testing.T) {
+	t.Setenv("GIT_DIR", ".git")
+
+	expected := fmt.Sprintf(".git/objects/%s/%s", TEST_SHA_STR[:2], TEST_SHA_STR[2:])
+
+	sha, err := sha.FromByteSlice(&TEST_BYTE_SLICE)
+
+	if err != nil {
+		t.Fatalf("FromByteSlice returned err %v", err)
+	}
+
+	objPath, err := sha.GetObjPath()
+
+	if err != nil {
+		t.Fatalf("GetObjPath returned err %v", err)
+	}
+
+	if objPath != expected {
+		t.Fatalf("expected objPath to be %s but got %s", expected, objPath)
+	}
+
+}
+
+func TestFromData(t *testing.T) {
+	DATA := []byte("this is some random data")
+	EXPECTED_SHA_STR := "11f5ec9b6ee9c64b614106db0f07bb7092db1602"
+
+	sha, err := sha.FromData(&DATA)
+
+	if err != nil {
+		t.Fatalf("FromData returned err %v", err)
+	}
+
+	if sha.MarshallToStr() != EXPECTED_SHA_STR {
+		t.Fatalf("expected sha to be %s but got %s", EXPECTED_SHA_STR, sha.MarshallToStr())
 	}
 
 }

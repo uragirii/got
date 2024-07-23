@@ -2,13 +2,18 @@ package sha
 
 import (
 	"bytes"
+	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
+	"path"
 	"strings"
+
+	"github.com/uragirii/got/internals"
 )
 
 const BYTES_LEN = 20
 const STR_LEN = BYTES_LEN * 2
+const _ObjectsDir string = "objects"
 
 type SHA struct {
 	hash *[]byte
@@ -53,4 +58,28 @@ func (sha *SHA) GetBytes() *[]byte {
 
 func (sha *SHA) GetBinStr() string {
 	return string(*sha.hash)
+}
+
+func (sha SHA) GetObjPath() (string, error) {
+	gitDir, err := internals.GetGitDir()
+
+	if err != nil {
+		return "", err
+	}
+
+	objectsDir := path.Join(gitDir, _ObjectsDir)
+
+	shaStr := sha.MarshallToStr()
+
+	objPath := path.Join(objectsDir, shaStr[0:2], shaStr[2:])
+
+	return objPath, nil
+}
+
+func FromData(data *[]byte) (*SHA, error) {
+	hash := sha1.Sum(*data)
+
+	hashSlice := hash[:]
+
+	return FromByteSlice(&hashSlice)
 }
