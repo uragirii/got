@@ -1,21 +1,50 @@
 package object_test
 
 import (
+	"bytes"
+	"compress/zlib"
 	"fmt"
+	"io/fs"
 	"testing"
+	"testing/fstest"
 
 	"github.com/uragirii/got/internals/git/object"
+	"github.com/uragirii/got/internals/git/sha"
 )
 
-func TestGetContents(t *testing.T) {
+func TestFromSHA(t *testing.T) {
 	DATA := "data data data data"
 	DATA_LEN := len(DATA)
+
+	setupMapFs := func(uncompressedData []byte) (*sha.SHA, fs.FS) {
+		var buffer bytes.Buffer
+
+		writer := zlib.NewWriter(&buffer)
+
+		writer.Write(uncompressedData)
+
+		writer.Close()
+
+		sha, _ := sha.FromData(&uncompressedData)
+
+		mapFs := fstest.MapFS{}
+
+		objPath, _ := sha.GetObjPath()
+
+		mapFs[objPath] = &fstest.MapFile{Data: buffer.Bytes()}
+
+		return sha, fstest.MapFS(mapFs)
+	}
 
 	t.Run("parses blob obj correctly", func(t *testing.T) {
 		blobHeader := fmt.Sprintf(object.BlobHeader, DATA_LEN)
 		uncompressedObj := []byte(fmt.Sprintf("%s%s", blobHeader, DATA))
 
-		contents, err := object.GetContents(&uncompressedObj)
+		t.Setenv("GIT_DIR", ".git")
+
+		sha, fsys := setupMapFs(uncompressedObj)
+
+		contents, err := object.FromSHA(sha, fsys)
 
 		if err != nil {
 			t.Errorf("expected err to be nil but found %v", err)
@@ -35,7 +64,11 @@ func TestGetContents(t *testing.T) {
 		commitHeader := fmt.Sprintf(object.CommitHeader, DATA_LEN)
 		uncompressedObj := []byte(fmt.Sprintf("%s%s", commitHeader, DATA))
 
-		contents, err := object.GetContents(&uncompressedObj)
+		t.Setenv("GIT_DIR", ".git")
+
+		sha, fsys := setupMapFs(uncompressedObj)
+
+		contents, err := object.FromSHA(sha, fsys)
 
 		if err != nil {
 			t.Errorf("expected err to be nil but found %v", err)
@@ -55,7 +88,11 @@ func TestGetContents(t *testing.T) {
 		treeHeader := fmt.Sprintf(object.TreeHeader, DATA_LEN)
 		uncompressedObj := []byte(fmt.Sprintf("%s%s", treeHeader, DATA))
 
-		contents, err := object.GetContents(&uncompressedObj)
+		t.Setenv("GIT_DIR", ".git")
+
+		sha, fsys := setupMapFs(uncompressedObj)
+
+		contents, err := object.FromSHA(sha, fsys)
 
 		if err != nil {
 			t.Errorf("expected err to be nil but found %v", err)
@@ -72,8 +109,11 @@ func TestGetContents(t *testing.T) {
 		t.Run("throws error when content len doesnt match", func(t *testing.T) {
 			blobHeader := fmt.Sprintf(object.BlobHeader, DATA_LEN+5)
 			uncompressedObj := []byte(fmt.Sprintf("%s%s", blobHeader, DATA))
+			t.Setenv("GIT_DIR", ".git")
 
-			_, err := object.GetContents(&uncompressedObj)
+			sha, fsys := setupMapFs(uncompressedObj)
+
+			_, err := object.FromSHA(sha, fsys)
 
 			if err != nil {
 				return

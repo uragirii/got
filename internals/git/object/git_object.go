@@ -4,6 +4,7 @@ import (
 	"compress/zlib"
 	"fmt"
 	"io"
+	"io/fs"
 	"slices"
 	"strconv"
 
@@ -39,7 +40,7 @@ type ObjectContents struct {
 	Contents *[]byte
 }
 
-func Decompress(reader io.Reader) (*[]byte, error) {
+func decompress(reader io.Reader) (*[]byte, error) {
 	reader, err := zlib.NewReader(reader)
 
 	if err != nil {
@@ -55,7 +56,32 @@ func Decompress(reader io.Reader) (*[]byte, error) {
 	return &uncompressed, nil
 }
 
-func GetContents(decompressedContents *[]byte) (ObjectContents, error) {
+func FromSHA(sha *sha.SHA, fsys fs.FS) (ObjectContents, error) {
+	objPath, err := sha.GetObjPath()
+
+	if err != nil {
+		return ObjectContents{}, err
+	}
+
+	objFile, err := fsys.Open(objPath)
+
+	if err != nil {
+		return ObjectContents{}, err
+	}
+
+	defer objFile.Close()
+
+	decompressedContents, err := decompress(objFile)
+
+	if err != nil {
+		return ObjectContents{}, err
+	}
+
+	return getContents(decompressedContents)
+
+}
+
+func getContents(decompressedContents *[]byte) (ObjectContents, error) {
 	headerEndIdx := slices.Index(*decompressedContents, 0x00)
 
 	if headerEndIdx == -1 {

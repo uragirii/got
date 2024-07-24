@@ -21,28 +21,9 @@ type Blob struct {
 	sha      *sha.SHA
 }
 
-func FromSHA(sha *sha.SHA, fs fs.FS) (*Blob, error) {
-	objPath, err := sha.GetObjPath()
+func FromSHA(sha *sha.SHA, fsys fs.FS) (*Blob, error) {
 
-	if err != nil {
-		return nil, err
-	}
-
-	objFile, err := fs.Open(objPath)
-
-	if err != nil {
-		return nil, err
-	}
-
-	defer objFile.Close()
-
-	decompressedContents, err := object.Decompress(objFile)
-
-	if err != nil {
-		return nil, err
-	}
-
-	objContents, err := object.GetContents(decompressedContents)
+	objContents, err := object.FromSHA(sha, fsys)
 
 	if err != nil {
 		return nil, err
