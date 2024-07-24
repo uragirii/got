@@ -1,93 +1,150 @@
-package object
+package blob
 
 import (
-	"crypto/sha1"
+	"bytes"
+	"compress/zlib"
+	"errors"
 	"fmt"
+	"io"
+	"io/fs"
 	"os"
-	"slices"
 
+	"github.com/uragirii/got/internals/git/object"
 	"github.com/uragirii/got/internals/git/sha"
 )
 
-type GitBlob struct {
+var ErrInvalidObjType = fmt.Errorf("object is not blob type")
+
+type Blob struct {
+	// Doesn't contain the header
 	contents *[]byte
-	SHA      *sha.SHA
+	sha      *sha.SHA
 }
 
-const _GitBlobHeader string = "blob %d\u0000"
-
-func FromSHA(sha *sha.SHA) (*GitBlob, error) {
+func FromSHA(sha *sha.SHA, fs fs.FS) (*Blob, error) {
 	objPath, err := sha.GetObjPath()
 
 	if err != nil {
 		return nil, err
 	}
 
-	contents, err := os.ReadFile(objPath)
+	objFile, err := fs.Open(objPath)
 
 	if err != nil {
 		return nil, err
 	}
 
-	decompressedContents, err := decompressObj(&contents)
+	defer objFile.Close()
+
+	decompressedContents, err := object.Decompress(objFile)
 
 	if err != nil {
 		return nil, err
 	}
 
-	objType, err := getObjType(decompressedContents)
+	objContents, err := object.GetContents(decompressedContents)
 
 	if err != nil {
 		return nil, err
 	}
 
-	if objType != BlobObj {
-		return nil, ErrInvalidObj
+	if objContents.ObjType != object.BlobObj {
+		return nil, ErrInvalidObjType
 	}
 
-	headerEndIdx := slices.Index(*decompressedContents, 0x00)
-
-	// No need to check headerEndIdx as it will be >0
-	// check is already done inside getObjType
-
-	actualContents := (*decompressedContents)[headerEndIdx+1:]
-
-	return &GitBlob{
-		contents: &actualContents,
-		SHA:      sha,
+	return &Blob{
+		sha:      sha,
+		contents: objContents.Contents,
 	}, nil
 }
 
-func (blob *GitBlob) PrettyPrint() {
-	fmt.Println(string(*blob.contents))
+func (blob Blob) String() string {
+	return string(*blob.contents)
 }
 
-func FromFile(filePath string) (*GitBlob, error) {
-	fileContents, err := os.ReadFile(filePath)
+// func (obj *Blob) RawString() string {
+// 	return fmt.Sprint(string(*(obj.getContentWithoutHeader())))
+// }
+
+func (blob Blob) GetObjType() object.ObjectType {
+	return object.BlobObj
+}
+
+func (blob Blob) getContentWithHeader() *[]byte {
+	var buffer bytes.Buffer
+
+	contentLn := len(*blob.contents)
+
+	buffer.Write([]byte(fmt.Sprintf(object.BlobHeader, contentLn)))
+
+	buffer.Write(*blob.contents)
+
+	b := buffer.Bytes()
+
+	return &b
+}
+
+func (blob Blob) Write(w io.Writer) error {
+
+	writer := zlib.NewWriter(w)
+
+	_, err := writer.Write(*blob.getContentWithHeader())
+
+	if err != nil {
+		return err
+	}
+
+	writer.Close()
+
+	return nil
+}
+
+func (blob Blob) WriteToFile() error {
+	blobPath, err := blob.sha.GetObjPath()
+
+	if err != nil {
+		return err
+	}
+
+	if _, err := os.Stat(blobPath); errors.Is(err, os.ErrNotExist) {
+
+		var compressBytes bytes.Buffer
+
+		err := blob.Write(&compressBytes)
+
+		if err != nil {
+			return err
+		}
+
+		return os.WriteFile(blobPath, compressBytes.Bytes(), 0444)
+	}
+	return nil
+}
+
+func (blob Blob) GetSHA() *sha.SHA {
+	return blob.sha
+}
+
+// Creates a new in memory blob from the raw file
+// It doesn't read the existing object, instead hashes a file
+func FromFile(reader io.Reader) (*Blob, error) {
+	data, err := io.ReadAll(reader)
 
 	if err != nil {
 		return nil, err
 	}
 
-	header := []byte(fmt.Sprintf(_GitBlobHeader, len(fileContents)))
+	blob := Blob{
+		contents: &data,
+	}
 
-	blobContents := append(header, fileContents...)
-
-	hashArr := sha1.Sum(blobContents)
-	hashSlice := hashArr[:]
-
-	sha, err := sha.FromByteSlice(&hashSlice)
+	sha, err := sha.FromData(blob.getContentWithHeader())
 
 	if err != nil {
 		return nil, err
 	}
 
-	return &GitBlob{
-		contents: &fileContents,
-		SHA:      sha,
-	}, nil
-}
+	blob.sha = sha
 
-func (blob *GitBlob) Write() {
-	panic("not implemented")
+	return &blob, nil
 }
