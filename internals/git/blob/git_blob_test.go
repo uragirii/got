@@ -49,6 +49,10 @@ func TestObject(t *testing.T) {
 			t.Errorf("expected raw string to be %s but got %s", TEST_STR, obj.String())
 		}
 
+		if obj.Raw() != TEST_STR {
+			t.Errorf("expected string to be %s but got %s", TEST_STR, obj.String())
+		}
+
 		if obj.GetObjType() != object.BlobObj {
 			t.Errorf("expected object type to be %s but got %s", object.BlobObj, obj.GetObjType())
 		}
@@ -80,6 +84,10 @@ func TestObject(t *testing.T) {
 		}
 
 		if obj.String() != TEST_STR {
+			t.Errorf("expected string to be %s but got %s", TEST_STR, obj.String())
+		}
+
+		if obj.Raw() != TEST_STR {
 			t.Errorf("expected raw string to be %s but got %s", TEST_STR, obj.String())
 		}
 

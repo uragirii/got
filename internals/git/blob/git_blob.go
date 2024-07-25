@@ -106,6 +106,10 @@ func (blob Blob) GetSHA() *sha.SHA {
 	return blob.sha
 }
 
+func (blob Blob) Raw() string {
+	return blob.String()
+}
+
 // Creates a new in memory blob from the raw file
 // It doesn't read the existing object, instead hashes a file
 func FromFile(reader io.Reader) (*Blob, error) {
