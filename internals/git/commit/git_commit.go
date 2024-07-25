@@ -1,14 +1,19 @@
-package object
+package commit
 
 import (
+	"compress/zlib"
 	"fmt"
+	"io"
+	"io/fs"
 	"strings"
 
+	"github.com/uragirii/got/internals/git/object"
 	"github.com/uragirii/got/internals/git/sha"
+	"github.com/uragirii/got/internals/git/tree"
 )
 
 type Commit struct {
-	Tree      *Tree
+	Tree      *tree.Tree
 	parentSHA *sha.SHA
 	sha       *sha.SHA
 	message   string
@@ -19,12 +24,19 @@ type Commit struct {
 
 var ErrInvalidCommit = fmt.Errorf("invalid commit")
 
-func ToCommit(obj *Object) (*Commit, error) {
-	if obj.objectType != CommitObj {
+func FromSHA(SHA *sha.SHA, fsys fs.FS) (*Commit, error) {
+
+	objContents, err := object.FromSHA(SHA, fsys)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if objContents.ObjType != object.CommitObj {
 		return nil, ErrInvalidCommit
 	}
 
-	commitDetails := string(*obj.getContentWithoutHeader())
+	commitDetails := string(*objContents.Contents)
 
 	msgStartIndex := strings.Index(commitDetails, "\n\n")
 
@@ -55,13 +67,7 @@ func ToCommit(obj *Object) (*Commit, error) {
 		return nil, err
 	}
 
-	treeObj, err := NewObjectFromSHA(treeSha)
-
-	if err != nil {
-		return nil, err
-	}
-
-	tree, err := ToTree(treeObj)
+	tree, err := tree.FromSHA(treeSha, fsys)
 
 	if err != nil {
 		return nil, err
@@ -69,12 +75,53 @@ func ToCommit(obj *Object) (*Commit, error) {
 
 	return &Commit{
 		Tree:      tree,
-		sha:       obj.sha,
+		sha:       SHA,
 		message:   commitMsg,
 		parentSHA: parentSha,
 	}, nil
+
+}
+
+func (commit Commit) GetSHA() *sha.SHA {
+	return commit.sha
+}
+
+func (commit Commit) GetObjType() object.ObjectType {
+	return object.CommitObj
 }
 
 func (commit Commit) String() string {
-	return fmt.Sprintf("commit %s\n\n\t%s", commit.sha.MarshallToStr(), commit.message)
+	var sb strings.Builder
+
+	sb.WriteString(fmt.Sprintf("tree %s\n", commit.Tree.SHA.MarshallToStr()))
+	sb.WriteString(fmt.Sprintf("parent %s\n", commit.parentSHA.MarshallToStr()))
+	// 	author Apoorv Kansal <apoorvkansalak@gmail.com> 1720643686 +0530
+	// committer Apoorv Kansal <apoorvkansalak@gmail.com> 1720643686 +053
+	fmt.Println("WARN person and commiter not parsed for commit")
+	sb.WriteString("author Apoorv Kansal <apoorvkansalak@gmail.com> 1720643686 +0530\n")
+	sb.WriteString("committer Apoorv Kansal <apoorvkansalak@gmail.com> 1720643686 +0530\n")
+	sb.WriteString("\n")
+	sb.WriteString(strings.Trim(commit.message, "\n"))
+	sb.WriteString("\n")
+
+	return sb.String()
+
+}
+
+func (commit Commit) Write(writer io.Writer) error {
+	contents := commit.String()
+
+	w := zlib.NewWriter(writer)
+
+	_, err := w.Write([]byte(contents))
+
+	if err != nil {
+		return err
+	}
+
+	return w.Close()
+}
+
+func (commit Commit) Raw() string {
+	return commit.String()
 }

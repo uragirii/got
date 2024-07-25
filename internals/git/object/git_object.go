@@ -27,11 +27,13 @@ const (
 
 type Object interface {
 	GetSHA() *sha.SHA
+	// Compresses the data and writes it to the writer
 	Write(io.Writer) error
 	GetObjType() ObjectType
 	// Pretty print the object
 	String() string
-	Read(io.Reader)
+	// Raw print the obj and not pretty print
+	Raw() string
 }
 
 type ObjectContents struct {
