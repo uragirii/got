@@ -1,7 +1,6 @@
 package commit_test
 
 import (
-	"strings"
 	"testing"
 	"testing/fstest"
 
@@ -17,8 +16,6 @@ committer Apoorv Kansal <apoorvkansalak@gmail.com> 1720643686 +0530
 
 feat: add support for rudimentary git add
 `
-
-var DATA = strings.NewReader(TEST_COMMIT_STR)
 
 const DATA_SHA_STR = "52c377158a8dd24e5b60908a962e73ce88288920"
 
