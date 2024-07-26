@@ -24,8 +24,8 @@ func TestFromByteSlice(t *testing.T) {
 		}
 	}
 
-	if sha.MarshallToStr() != TEST_SHA_STR {
-		t.Fatalf("MarshallToStr returned incorrect string, expected %s got %s", TEST_SHA_STR, sha.MarshallToStr())
+	if sha.String() != TEST_SHA_STR {
+		t.Fatalf("MarshallToStr returned incorrect string, expected %s got %s", TEST_SHA_STR, sha)
 	}
 }
 
@@ -42,8 +42,8 @@ func TestFromString(t *testing.T) {
 		}
 	}
 
-	if sha.MarshallToStr() != TEST_SHA_STR {
-		t.Fatalf("MarshallToStr returned incorrect string, expected %s got %s", TEST_SHA_STR, sha.MarshallToStr())
+	if sha.String() != TEST_SHA_STR {
+		t.Fatalf("MarshallToStr returned incorrect string, expected %s got %s", TEST_SHA_STR, sha)
 	}
 }
 
@@ -99,8 +99,8 @@ func TestFromData(t *testing.T) {
 		t.Fatalf("FromData returned err %v", err)
 	}
 
-	if sha.MarshallToStr() != EXPECTED_SHA_STR {
-		t.Fatalf("expected sha to be %s but got %s", EXPECTED_SHA_STR, sha.MarshallToStr())
+	if sha.String() != EXPECTED_SHA_STR {
+		t.Fatalf("expected sha to be %s but got %s", EXPECTED_SHA_STR, sha)
 	}
 
 }

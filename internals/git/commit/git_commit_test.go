@@ -78,7 +78,7 @@ func TestCommit(t *testing.T) {
 		}
 
 		if !commit.GetSHA().Eq(objSha) {
-			t.Errorf("expected the sha to be %s but got %s", DATA_SHA_STR, commit.GetSHA().MarshallToStr())
+			t.Errorf("expected the sha to be %s but got %s", DATA_SHA_STR, commit.GetSHA())
 		}
 
 		if commit.String() != TEST_COMMIT_STR {

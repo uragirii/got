@@ -34,7 +34,7 @@ func TestNew(t *testing.T) {
 		}
 
 		if !gitHead.SHA.Eq(sha) {
-			t.Errorf("expected SHA to be %s but got %s", gitHead.SHA.MarshallToStr(), sha.MarshallToStr())
+			t.Errorf("expected SHA to be %s but got %s", gitHead.SHA, sha)
 		}
 	})
 
@@ -61,7 +61,7 @@ func TestNew(t *testing.T) {
 		}
 
 		if !gitHead.SHA.Eq(sha) {
-			t.Errorf("expected SHA to be %s but got %s", gitHead.SHA.MarshallToStr(), sha.MarshallToStr())
+			t.Errorf("expected SHA to be %s but got %s", gitHead.SHA, sha)
 		}
 	})
 

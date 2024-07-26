@@ -93,8 +93,8 @@ func (commit Commit) GetObjType() object.ObjectType {
 func (commit Commit) String() string {
 	var sb strings.Builder
 
-	sb.WriteString(fmt.Sprintf("tree %s\n", commit.Tree.SHA.MarshallToStr()))
-	sb.WriteString(fmt.Sprintf("parent %s\n", commit.parentSHA.MarshallToStr()))
+	sb.WriteString(fmt.Sprintf("tree %s\n", commit.Tree.SHA))
+	sb.WriteString(fmt.Sprintf("parent %s\n", commit.parentSHA))
 	// 	author Apoorv Kansal <apoorvkansalak@gmail.com> 1720643686 +0530
 	// committer Apoorv Kansal <apoorvkansalak@gmail.com> 1720643686 +053
 	fmt.Println("WARN person and commiter not parsed for commit")

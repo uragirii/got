@@ -29,8 +29,8 @@ func TestObject(t *testing.T) {
 			t.Error(err)
 		}
 
-		if obj.GetSHA().MarshallToStr() != DATA_SHA_STR {
-			t.Errorf("expected the sha to be %s but got %s", DATA_SHA_STR, obj.GetSHA().MarshallToStr())
+		if obj.GetSHA().String() != DATA_SHA_STR {
+			t.Errorf("expected the sha to be %s but got %s", DATA_SHA_STR, obj.GetSHA())
 		}
 
 		var objFile bytes.Buffer
@@ -80,7 +80,7 @@ func TestObject(t *testing.T) {
 		}
 
 		if !obj.GetSHA().Eq(objSha) {
-			t.Errorf("expected the sha to be %s but got %s", DATA_SHA_STR, obj.GetSHA().MarshallToStr())
+			t.Errorf("expected the sha to be %s but got %s", DATA_SHA_STR, obj.GetSHA())
 		}
 
 		if obj.String() != TEST_STR {

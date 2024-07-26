@@ -42,7 +42,7 @@ func FromString(shaStr string) (*SHA, error) {
 	return FromByteSlice(&byteSlice)
 }
 
-func (sha *SHA) MarshallToStr() string {
+func (sha *SHA) String() string {
 	return fmt.Sprintf("%x", *sha.hash)
 }
 
@@ -63,7 +63,7 @@ func (sha SHA) GetObjPath() (string, error) {
 
 	objectsDir := path.Join(gitDir, _ObjectsDir)
 
-	shaStr := sha.MarshallToStr()
+	shaStr := sha.String()
 
 	objPath := path.Join(objectsDir, shaStr[0:2], shaStr[2:])
 
