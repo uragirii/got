@@ -113,7 +113,15 @@ func (commit Commit) Write(writer io.Writer) error {
 
 	w := zlib.NewWriter(writer)
 
-	_, err := w.Write([]byte(contents))
+	header := fmt.Sprintf(object.CommitHeader, len(contents))
+
+	_, err := w.Write([]byte(header))
+
+	if err != nil {
+		return err
+	}
+
+	_, err = w.Write([]byte(contents))
 
 	if err != nil {
 		return err

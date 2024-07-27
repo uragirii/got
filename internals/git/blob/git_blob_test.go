@@ -57,6 +57,16 @@ func TestObject(t *testing.T) {
 			t.Errorf("expected object type to be %s but got %s", object.BlobObj, obj.GetObjType())
 		}
 
+		var buffer bytes.Buffer
+
+		obj.Write(&buffer)
+
+		compressedBytes := buffer.Bytes()
+
+		if !bytes.Equal(compressedBytes, DATA_COMPRESSED_BYTES) {
+			t.Errorf("expected the raw to be \n% x\n\n but got \n% x", DATA_COMPRESSED_BYTES, compressedBytes)
+		}
+
 	})
 
 	t.Run("reads data correctly from hashed object", func(t *testing.T) {
@@ -93,6 +103,16 @@ func TestObject(t *testing.T) {
 
 		if obj.GetObjType() != object.BlobObj {
 			t.Errorf("expected object type to be %s but got %s", object.BlobObj, obj.GetObjType())
+		}
+
+		var buffer bytes.Buffer
+
+		obj.Write(&buffer)
+
+		compressedBytes := buffer.Bytes()
+
+		if !bytes.Equal(compressedBytes, DATA_COMPRESSED_BYTES) {
+			t.Errorf("expected the raw to be \n% x\n\n but got \n% x", DATA_COMPRESSED_BYTES, compressedBytes)
 		}
 
 	})
