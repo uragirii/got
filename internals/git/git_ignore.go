@@ -1,9 +1,10 @@
 package git
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
-	"os"
+	"io/fs"
 	"path"
 	"path/filepath"
 	"strings"
@@ -32,7 +33,7 @@ func (entry *ignoreEntry) Match(filePath string) bool {
 		return true
 	}
 
-	matched, err = path.Match(fmt.Sprintf("%s/", entry.rule), rel)
+	matched, err = path.Match(fmt.Sprintf("%s/*", entry.rule), rel)
 
 	if err != nil {
 		return false
@@ -45,14 +46,14 @@ type Ignore struct {
 	rules []ignoreEntry
 }
 
-func NewIgnore(filePath string) (*Ignore, error) {
+func NewIgnore(filePath string, fsys fs.FS) (*Ignore, error) {
 	var rules []ignoreEntry
 
 	ignore := Ignore{
 		rules: rules,
 	}
 
-	return ignore.WithFile(filePath)
+	return ignore.WithFile(filePath, fsys)
 }
 
 func (g *Ignore) Match(filePath string) bool {
@@ -65,30 +66,38 @@ func (g *Ignore) Match(filePath string) bool {
 	return false
 }
 
-func (g *Ignore) WithFile(ignoreFilePath string) (*Ignore, error) {
+func (g *Ignore) WithFile(ignoreFilePath string, fsys fs.FS) (*Ignore, error) {
 	// If file doesn't exist return empty ignore list
-	if _, err := os.Stat(ignoreFilePath); errors.Is(err, os.ErrNotExist) {
+	ignoreFile, err := fsys.Open(ignoreFilePath)
+
+	if errors.Is(err, fs.ErrNotExist) {
 		return g, nil
 	}
-
-	contents, err := os.ReadFile(ignoreFilePath)
 
 	if err != nil {
 		return nil, err
 	}
 
-	splitedLines := strings.Split(string(contents), "\n")
+	scanner := bufio.NewScanner(ignoreFile)
 
-	rules := make([]ignoreEntry, len(g.rules)+len(splitedLines))
-
+	// Just random number
+	var rules []ignoreEntry
 	rootDir := path.Join(ignoreFilePath, "..")
 
-	for idx, line := range splitedLines {
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		if strings.HasPrefix(line, "#") {
+			continue
+		}
+
 		if line != "" {
-			rules[idx] = ignoreEntry{
+			line, _ := strings.CutPrefix(line, "/")
+			rules = append(rules, ignoreEntry{
 				rule:    line,
 				rootDir: rootDir,
-			}
+			})
+
 		}
 	}
 
