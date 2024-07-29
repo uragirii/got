@@ -10,6 +10,8 @@ import (
 	"strings"
 )
 
+const GIT_IGNORE string = ".gitignore"
+
 type ignoreEntry struct {
 	rule    string
 	rootDir string

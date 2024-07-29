@@ -1,10 +1,14 @@
 package tree
 
 import (
+	"bytes"
 	"compress/zlib"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
+	"os"
+	"path"
 	"sort"
 	"strings"
 
@@ -97,6 +101,35 @@ func (tree Tree) Write(writer io.Writer) error {
 	w.Write([]byte(contents))
 
 	return w.Close()
+}
+
+func (tree Tree) WriteToFile() error {
+	objPath, err := tree.SHA.GetObjPath()
+
+	if err != nil {
+		return err
+	}
+
+	if _, err := os.Stat(objPath); errors.Is(err, os.ErrNotExist) {
+		var buffer bytes.Buffer
+
+		err = tree.Write(&buffer)
+
+		if err != nil {
+			return err
+		}
+
+		err = os.MkdirAll(path.Join(objPath, ".."), 0755)
+
+		if err != nil {
+			return err
+		}
+
+		return os.WriteFile(objPath, buffer.Bytes(), 0444) // Read only file
+
+	}
+
+	return nil
 }
 
 func (tree *Tree) sortEnteries() {
