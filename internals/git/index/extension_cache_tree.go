@@ -10,8 +10,8 @@ import (
 	"strconv"
 
 	"github.com/uragirii/got/internals"
-	"github.com/uragirii/got/internals/git/object"
 	"github.com/uragirii/got/internals/git/sha"
+	objTree "github.com/uragirii/got/internals/git/tree"
 )
 
 type CacheTree struct {
@@ -255,7 +255,7 @@ func (tree *CacheTree) Hydrate(basePath string, index *Index) (int, error) {
 
 	entryCount := 0
 
-	enteries := make([]object.TreeEntry, 0, len(items))
+	enteries := make([]objTree.TreeEntry, 0, len(items))
 
 	relDirPath, err := filepath.Rel(rootDir, dirPath)
 
@@ -280,11 +280,11 @@ func (tree *CacheTree) Hydrate(basePath string, index *Index) (int, error) {
 
 		indexEntry := index.Get(filePath)
 
-		enteries = append(enteries, object.TreeEntry{
+		enteries = append(enteries, objTree.TreeEntry{
 			Name: item.Name(),
 			SHA:  indexEntry.SHA,
 			// TODO: Fixme check mode from index file and then check
-			Mode: object.ModeNormal,
+			Mode: objTree.ModeNormal,
 		})
 		entryCount++
 
@@ -304,14 +304,14 @@ func (tree *CacheTree) Hydrate(basePath string, index *Index) (int, error) {
 
 		entryCount += subTreeEntryCount
 
-		enteries = append(enteries, object.TreeEntry{
+		enteries = append(enteries, objTree.TreeEntry{
 			Name: subTree.RelPath,
 			SHA:  subTree.SHA,
-			Mode: object.ModeDir,
+			Mode: objTree.ModeDir,
 		})
 	}
 
-	gitTree, err := object.TreeFromEnteries(enteries)
+	gitTree, err := objTree.FromEnteries(enteries)
 
 	if err != nil {
 		fmt.Println("err gitTree", entryCount)
@@ -323,7 +323,7 @@ func (tree *CacheTree) Hydrate(basePath string, index *Index) (int, error) {
 
 	tree.SHA = gitTree.SHA
 
-	err = gitTree.Write()
+	err = gitTree.WriteToFile()
 
 	if err != nil {
 		fmt.Println("err write", entryCount, err)

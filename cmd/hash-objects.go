@@ -2,10 +2,11 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"sync"
 
 	"github.com/uragirii/got/internals"
-	"github.com/uragirii/got/internals/git/object"
+	"github.com/uragirii/got/internals/git/blob"
 )
 
 var HASH_OBJECT *internals.Command = &internals.Command{
@@ -42,16 +43,22 @@ func HashObject(c *internals.Command, _ string) {
 		go func(arg string, idx int) {
 			defer wg.Done()
 
-			obj, err := object.NewObject(arg)
+			file, err := os.Open(arg)
 
 			if err != nil {
 				panic(err)
 			}
 
-			results[idx] = obj.GetSHA().MarshallToStr()
+			obj, err := blob.FromFile(file)
+
+			if err != nil {
+				panic(err)
+			}
+
+			results[idx] = obj.GetSHA().String()
 
 			if compress {
-				obj.Write()
+				obj.WriteToFile()
 			}
 
 		}(arg, idx)

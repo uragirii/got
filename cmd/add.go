@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/uragirii/got/internals"
 	"github.com/uragirii/got/internals/git/index"
@@ -27,7 +28,7 @@ func Add(c *internals.Command, gitPath string) {
 		panic(err)
 	}
 
-	index.Add(c.Args)
+	index.Add(c.Args, os.DirFS("."))
 	index.Write()
 
 }

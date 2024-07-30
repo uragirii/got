@@ -5,6 +5,7 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
+	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
@@ -14,7 +15,7 @@ import (
 	"syscall"
 
 	"github.com/uragirii/got/internals"
-	"github.com/uragirii/got/internals/git/object"
+	"github.com/uragirii/got/internals/git/blob"
 	"github.com/uragirii/got/internals/git/sha"
 )
 
@@ -271,7 +272,7 @@ func (i *Index) Write() error {
 
 // Adds the files to the index
 // provide rel Path for the file and not the matching pattern
-func (i *Index) Add(filePaths []string) error {
+func (i *Index) Add(filePaths []string, fsys fs.FS) error {
 	var wg sync.WaitGroup
 
 	for _, filePath := range filePaths {
@@ -279,7 +280,9 @@ func (i *Index) Add(filePaths []string) error {
 		go func(filePath string) {
 			defer wg.Done()
 
-			obj, err := object.NewObject(filePath)
+			file, err := fsys.Open(filePath)
+
+			obj, err := blob.FromFile(file)
 
 			if err != nil {
 				panic(err)
@@ -315,7 +318,7 @@ func (i *Index) Add(filePaths []string) error {
 
 			i.cacheTree.add(strings.Split(filepath.Dir(filePath), string(filepath.Separator)))
 
-			err = obj.Write()
+			err = obj.WriteToFile()
 
 			if err != nil {
 				panic(err)

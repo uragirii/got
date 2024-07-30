@@ -2,10 +2,11 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/uragirii/got/internals"
+	"github.com/uragirii/got/internals/git/blob"
 	"github.com/uragirii/got/internals/git/index"
-	"github.com/uragirii/got/internals/git/object"
 )
 
 var LS_FILES *internals.Command = &internals.Command{
@@ -41,7 +42,13 @@ func LsFiles(c *internals.Command, _ string) {
 
 	for _, entry := range gitIndex.GetTrackedFiles() {
 		if c.GetFlag("modified") == "true" {
-			obj, err := object.NewObject(entry.Filepath)
+			file, err := os.Open(entry.Filepath)
+
+			if err != nil {
+				panic(err)
+			}
+
+			obj, err := blob.FromFile(file)
 
 			if err != nil {
 				panic(err)
