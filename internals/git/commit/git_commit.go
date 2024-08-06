@@ -24,9 +24,9 @@ type Commit struct {
 
 var ErrInvalidCommit = fmt.Errorf("invalid commit")
 
-func FromSHA(SHA *sha.SHA, fsys fs.FS) (*Commit, error) {
+func FromSHA(SHA *sha.SHA, gitFsys fs.FS) (*Commit, error) {
 
-	objContents, err := object.FromSHA(SHA, fsys)
+	objContents, err := object.FromSHA(SHA, gitFsys)
 
 	if err != nil {
 		return nil, err
@@ -67,7 +67,7 @@ func FromSHA(SHA *sha.SHA, fsys fs.FS) (*Commit, error) {
 		return nil, err
 	}
 
-	tree, err := tree.FromSHA(treeSha, fsys)
+	tree, err := tree.FromSHA(treeSha, gitFsys)
 
 	if err != nil {
 		return nil, err

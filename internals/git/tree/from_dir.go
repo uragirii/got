@@ -2,6 +2,7 @@ package tree
 
 import (
 	"io/fs"
+	"os"
 	"path"
 	"sync"
 
@@ -103,7 +104,7 @@ func getTreeForDir(fsys fs.FS, dirPath string, ignore *git.Ignore) (*Tree, error
 	return FromEnteries(entries)
 }
 
-func FromDir(fsys fs.FS) (*Tree, error) {
+func FromDir() (*Tree, error) {
 
 	gitDir, err := internals.GetGitDir()
 
@@ -113,11 +114,13 @@ func FromDir(fsys fs.FS) (*Tree, error) {
 
 	rootDir := path.Join(gitDir, "..")
 
-	ignore, err := git.NewIgnore(path.Join(rootDir, git.GIT_IGNORE), fsys)
+	rootFsys := os.DirFS(rootDir)
+
+	ignore, err := git.NewIgnore(git.GIT_IGNORE, rootFsys)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return getTreeForDir(fsys, rootDir, ignore)
+	return getTreeForDir(rootFsys, ".", ignore)
 }

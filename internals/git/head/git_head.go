@@ -5,10 +5,8 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"path"
 	"strings"
 
-	"github.com/uragirii/got/internals"
 	"github.com/uragirii/got/internals/git/sha"
 )
 
@@ -34,16 +32,11 @@ type Head struct {
 
 var ErrInvalidHead = fmt.Errorf("invalid HEAD")
 
-func newRefHead(headData []byte, fs fs.FS) (*Head, error) {
-	gitDir, err := internals.GetGitDir()
-
-	if err != nil {
-		return nil, err
-	}
+func newRefHead(headData []byte, gitFs fs.FS) (*Head, error) {
 
 	refPath := string(headData[len(_Ref):])
 
-	branchFile, err := fs.Open(path.Join(gitDir, refPath))
+	branchFile, err := gitFs.Open(refPath)
 
 	if err != nil {
 		return nil, err
@@ -117,16 +110,9 @@ func newHead(headFile io.Reader, fs fs.FS) (*Head, error) {
 
 }
 
-func New(fs fs.FS) (*Head, error) {
-	gitDir, err := internals.GetGitDir()
+func New(gitFs fs.FS) (*Head, error) {
 
-	if err != nil {
-		return nil, err
-	}
-
-	headFilePath := path.Join(gitDir, _HeadFile)
-
-	headFile, err := fs.Open(headFilePath)
+	headFile, err := gitFs.Open(_HeadFile)
 
 	if err != nil {
 		return nil, err
@@ -134,6 +120,5 @@ func New(fs fs.FS) (*Head, error) {
 
 	defer headFile.Close()
 
-	return newHead(headFile, fs)
-
+	return newHead(headFile, gitFs)
 }

@@ -2,12 +2,14 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/uragirii/got/internals"
 	"github.com/uragirii/got/internals/color"
+	"github.com/uragirii/got/internals/git/commit"
 	"github.com/uragirii/got/internals/git/head"
 	"github.com/uragirii/got/internals/git/index"
-	"github.com/uragirii/got/internals/git/object"
+	"github.com/uragirii/got/internals/git/tree"
 )
 
 var STATUS *internals.Command = &internals.Command{
@@ -19,31 +21,33 @@ var STATUS *internals.Command = &internals.Command{
 
 func Status(c *internals.Command, gitPath string) {
 
-	head, err := head.New()
+	gitDir, err := internals.GetGitDir()
 
 	if err != nil {
 		panic(err)
 	}
 
-	obj, err := object.NewObjectFromSHA(head.SHA)
+	gitFs := os.DirFS(gitDir)
+
+	head, err := head.New(gitFs)
 
 	if err != nil {
 		panic(err)
 	}
 
-	commit, err := object.ToCommit(obj)
+	commit, err := commit.FromSHA(head.SHA, gitFs)
 
 	if err != nil {
 		panic(err)
 	}
 
-	tree, err := object.NewTree()
+	treeObj, err := tree.FromDir()
 
 	if err != nil {
 		panic(err)
 	}
 
-	changes, err := commit.Tree.Compare(tree)
+	changes, err := commit.Tree.Compare(treeObj, gitFs)
 
 	if err != nil {
 		panic(err)
@@ -55,15 +59,15 @@ func Status(c *internals.Command, gitPath string) {
 		panic(err)
 	}
 
-	var modifiedFiles []object.ChangeItem
+	var modifiedFiles []tree.ChangeItem
 	var untrackedFiles []string
-	var stagedFiles []object.ChangeItem
+	var stagedFiles []tree.ChangeItem
 
 	// TODO: FIXME when file is staged and then changed, it is shown as not staged
 	// comapare index sha with live sha and commit sha, if both are different, its above case
 	// ignoring for now
 	for _, change := range changes {
-		if change.Status != object.StatusAdded {
+		if change.Status != tree.StatusAdded {
 			indexEntry := indexFile.Get(change.RelPath)
 
 			if indexEntry.SHA.Eq(change.SHA) {

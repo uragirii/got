@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"path"
 	"strings"
-
-	"github.com/uragirii/got/internals"
 )
 
 const BYTES_LEN = 20
@@ -55,17 +53,10 @@ func (sha *SHA) GetBinStr() string {
 }
 
 func (sha SHA) GetObjPath() (string, error) {
-	gitDir, err := internals.GetGitDir()
-
-	if err != nil {
-		return "", err
-	}
-
-	objectsDir := path.Join(gitDir, _ObjectsDir)
 
 	shaStr := sha.String()
 
-	objPath := path.Join(objectsDir, shaStr[0:2], shaStr[2:])
+	objPath := path.Join(_ObjectsDir, shaStr[0:2], shaStr[2:])
 
 	return objPath, nil
 }
