@@ -2,10 +2,14 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/uragirii/got/internals"
+	"github.com/uragirii/got/internals/git/blob"
+	"github.com/uragirii/got/internals/git/commit"
 	"github.com/uragirii/got/internals/git/object"
 	"github.com/uragirii/got/internals/git/sha"
+	"github.com/uragirii/got/internals/git/tree"
 )
 
 var CAT_FILE *internals.Command = &internals.Command{
@@ -30,47 +34,26 @@ var CAT_FILE *internals.Command = &internals.Command{
 	Run: CatFile,
 }
 
-// func printTree(obj *[]byte) {
-// 	for idx := 0; idx < len(*obj); {
-// 		modeStartIdx := idx
-// 		for ; (*obj)[idx] != 0x20; idx++ {
-// 		}
+func CatFile(c *internals.Command, _ string) {
 
-// 		mode := string((*obj)[modeStartIdx:idx])
+	var objType, argSha string
 
-// 		if mode == "40000" {
-// 			mode = "040000"
-// 		}
+	if len(c.Args) == 2 {
+		objType = c.Args[0]
+		argSha = c.Args[1]
+	} else if len(c.Args) == 1 {
+		argSha = c.Args[0]
+	} else {
+		panic("fatal: invalid number of arguments")
+	}
 
-// 		nameStartIdx := idx
+	gitDir, err := internals.GetGitDir()
 
-// 		for ; (*obj)[idx] != 0x00; idx++ {
-// 		}
+	if err != nil {
+		panic(err)
+	}
 
-// 		name := string((*obj)[nameStartIdx:idx])
-
-// 		// get over the \0
-// 		idx++
-
-// 		sha := (*obj)[idx : idx+20]
-
-// 		idx += 20
-
-// 		shaStr := fmt.Sprintf("%x", sha)
-
-// 		objType, _, err := internals.ReadObject(shaStr)
-
-// 		if err != nil {
-// 			panic(err)
-// 		}
-
-// 		fmt.Printf("%s %s %s\t%s\n", mode, objType, shaStr, name)
-
-// 	}
-// }
-
-func CatFile(c *internals.Command, gitDir string) {
-	argSha := c.Args[0]
+	gitFs := os.DirFS(gitDir)
 
 	sha, err := sha.FromString(argSha)
 
@@ -78,21 +61,57 @@ func CatFile(c *internals.Command, gitDir string) {
 		panic(err)
 	}
 
-	obj, err := object.NewObjectFromSHA(sha)
+	obj, err := object.FromSHA(sha, gitFs)
 
 	if err != nil {
 		panic(err)
 	}
 
 	if c.GetFlag("type") == "true" {
-		fmt.Println(obj.GetObjType())
+		fmt.Println(obj.ObjType)
 		return
 	}
 
-	if c.GetFlag("pretty") == "true" {
-		fmt.Println(obj)
-	} else {
-		fmt.Println(obj.RawString())
+	if c.GetFlag("pretty") != "true" {
+		if !object.IsValidObjectType(objType) {
+			panic(fmt.Sprintf("fatal: invalid object type \"%s\"", objType))
+		}
+		if objType != string(obj.ObjType) {
+			panic(fmt.Sprintf("fatal: git cat-file %s: bad file", argSha))
+		}
+
+		fmt.Printf("%s\n", *obj.Contents)
+		return
+	}
+
+	switch obj.ObjType {
+	case object.BlobObj:
+		blob, err := blob.FromSHA(sha, gitFs)
+
+		if err != nil {
+			panic(err)
+		}
+
+		fmt.Println(blob.String())
+	case object.CommitObj:
+		commit, err := commit.FromSHA(sha, gitFs)
+
+		if err != nil {
+			panic(err)
+		}
+
+		fmt.Println(commit.String())
+
+	case object.TreeObj:
+		tree, err := tree.FromSHA(sha, gitFs)
+
+		if err != nil {
+			panic(err)
+		}
+
+		fmt.Println(tree.String())
+	default:
+		panic(fmt.Sprintf("fatal: git cat-file %s: bad file", argSha))
 	}
 
 }

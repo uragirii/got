@@ -25,6 +25,10 @@ const (
 	CommitObj ObjectType = "commit"
 )
 
+func IsValidObjectType(objType string) bool {
+	return objType == string(BlobObj) || objType == string(TreeObj) || objType == string(CommitObj)
+}
+
 type Object interface {
 	GetSHA() *sha.SHA
 	// Compresses the data and writes it to the writer
