@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"os"
+	"path/filepath"
 
 	"github.com/uragirii/got/cmd"
 	"github.com/uragirii/got/internals"
@@ -45,13 +45,13 @@ func main() {
 		return
 	}
 
-	cwd, err := os.Getwd()
+	gitDir, err := internals.GetGitDir()
 
 	if err != nil {
-		panic("error while geting cwd")
+		panic(err)
 	}
 
-	root, _ := internals.FindRoot(cwd)
+	root := filepath.Join(gitDir, "..")
 
 	command := args[0]
 
