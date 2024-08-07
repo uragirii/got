@@ -11,6 +11,7 @@ import (
 var SIMPLE_GITGNORE = []byte(`/test-folder
 main
 got
+#comment
 build`)
 
 func TestNewIgnore(t *testing.T) {
@@ -43,6 +44,16 @@ func TestNewIgnore(t *testing.T) {
 			Name:     "Matches file and folder correctly",
 			Filepath: "Users/username/Codes/golang/got/got/",
 			Expected: true,
+		},
+		{
+			Name:     "Comments are ignored",
+			Filepath: "Users/username/Codes/golang/got/comment",
+			Expected: false,
+		},
+		{
+			Name:     "Doesn't match other files",
+			Filepath: "Users/username/Codes/golang/got/some-file",
+			Expected: false,
 		},
 		{
 			Name:     "Matches file and folder correctly",
