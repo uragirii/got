@@ -69,7 +69,7 @@ func TestEq(t *testing.T) {
 func TestGetObjPath(t *testing.T) {
 	t.Setenv("GIT_DIR", ".git")
 
-	expected := fmt.Sprintf(".git/objects/%s/%s", TEST_SHA_STR[:2], TEST_SHA_STR[2:])
+	expected := fmt.Sprintf("objects/%s/%s", TEST_SHA_STR[:2], TEST_SHA_STR[2:])
 
 	sha, err := sha.FromByteSlice(&TEST_BYTE_SLICE)
 

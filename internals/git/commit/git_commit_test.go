@@ -60,7 +60,7 @@ func TestCommit(t *testing.T) {
 		objSha, _ := sha.FromString(DATA_SHA_STR)
 
 		mapFs := fstest.MapFS{
-			".git/objects/01/1bf1e3d368c58d3fd7ea584d69a9acb6b21c13": {Data: TREE_COMPRESSED_BYTES},
+			"objects/01/1bf1e3d368c58d3fd7ea584d69a9acb6b21c13": {Data: TREE_COMPRESSED_BYTES},
 		}
 
 		objPath, _ := objSha.GetObjPath()

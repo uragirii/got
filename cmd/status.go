@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path"
 
 	"github.com/uragirii/got/internals"
 	"github.com/uragirii/got/internals/color"
@@ -41,7 +42,9 @@ func Status(c *internals.Command, gitPath string) {
 		panic(err)
 	}
 
-	treeObj, err := tree.FromDir()
+	rootFs := os.DirFS(path.Join(gitPath, ".."))
+
+	treeObj, err := tree.FromDir(rootFs)
 
 	if err != nil {
 		panic(err)

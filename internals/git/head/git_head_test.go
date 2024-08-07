@@ -20,7 +20,7 @@ func TestNew(t *testing.T) {
 		}
 
 		fs := fstest.MapFS(fstest.MapFS{
-			".git/HEAD": {Data: []byte("14201e266991676173cbd041257cf1a0d8ff3a3a\n")},
+			"HEAD": {Data: []byte("14201e266991676173cbd041257cf1a0d8ff3a3a\n")},
 		})
 
 		gitHead, err := head.New(fs)
@@ -46,8 +46,8 @@ func TestNew(t *testing.T) {
 		}
 
 		fs := fstest.MapFS(fstest.MapFS{
-			".git/HEAD":                   {Data: []byte("ref: refs/heads/branch-name\n")},
-			".git/refs/heads/branch-name": {Data: []byte("14201e266991676173cbd041257cf1a0d8ff3a3a\n")},
+			"HEAD":                   {Data: []byte("ref: refs/heads/branch-name\n")},
+			"refs/heads/branch-name": {Data: []byte("14201e266991676173cbd041257cf1a0d8ff3a3a\n")},
 		})
 
 		gitHead, err := head.New(fs)
