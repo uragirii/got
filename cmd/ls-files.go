@@ -34,7 +34,21 @@ var LS_FILES *internals.Command = &internals.Command{
 
 func LsFiles(c *internals.Command, _ string) {
 
-	gitIndex, err := index.New()
+	gitDir, err := internals.GetGitDir()
+
+	if err != nil {
+		panic(err)
+	}
+
+	gitFs := os.DirFS(gitDir)
+
+	indexFile, err := gitFs.Open(index.IndexFileName)
+
+	if err != nil {
+		panic(err)
+	}
+
+	gitIndex, err := index.New(indexFile)
 
 	if err != nil {
 		panic(err)

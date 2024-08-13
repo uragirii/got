@@ -1,0 +1,276 @@
+.gitignore
+  ctime: 1721466491:868068768
+  mtime: 1721466491:868068768
+  dev: 16777232	ino: 28385203
+  uid: 502	gid: 20
+  size: 27	flags: 0
+Makefile
+  ctime: 1721242246:593513809
+  mtime: 1721242246:593513809
+  dev: 16777232	ino: 33234621
+  uid: 502	gid: 20
+  size: 159	flags: 0
+Readme.md
+  ctime: 1721073468:780894944
+  mtime: 1721073468:780894944
+  dev: 16777233	ino: 31088554
+  uid: 502	gid: 20
+  size: 1296	flags: 0
+cmd/add.go
+  ctime: 1722360672:414059472
+  mtime: 1722360672:414059472
+  dev: 16777232	ino: 31090152
+  uid: 502	gid: 20
+  size: 525	flags: 0
+cmd/cat-file.go
+  ctime: 1722970138:449026160
+  mtime: 1722970138:449026160
+  dev: 16777233	ino: 31075644
+  uid: 502	gid: 20
+  size: 2190	flags: 0
+cmd/commit.go
+  ctime: 1721050548:349153192
+  mtime: 1721050548:349153192
+  dev: 16777233	ino: 32977044
+  uid: 502	gid: 20
+  size: 514	flags: 0
+cmd/hash-objects.go
+  ctime: 1722360632:248391454
+  mtime: 1722360632:248391454
+  dev: 16777232	ino: 31075645
+  uid: 502	gid: 20
+  size: 1159	flags: 0
+cmd/help.go
+  ctime: 1719753511:287748897
+  mtime: 1719753511:287748897
+  dev: 16777233	ino: 31075646
+  uid: 502	gid: 20
+  size: 810	flags: 0
+cmd/init.go
+  ctime: 1719753511:287921314
+  mtime: 1719753511:287921314
+  dev: 16777233	ino: 31075647
+  uid: 502	gid: 20
+  size: 2867	flags: 0
+cmd/ls-files.go
+  ctime: 1722967841:985796943
+  mtime: 1722967841:985796943
+  dev: 16777233	ino: 31075648
+  uid: 502	gid: 20
+  size: 1077	flags: 0
+cmd/status.go
+  ctime: 1723054110:626567168
+  mtime: 1723054110:626567168
+  dev: 16777233	ino: 31075649
+  uid: 502	gid: 20
+  size: 3031	flags: 0
+go.mod
+  ctime: 1717590891:541333294
+  mtime: 1717590891:541333294
+  dev: 16777233	ino: 28371669
+  uid: 502	gid: 20
+  size: 42	flags: 0
+internals/color/main.go
+  ctime: 1719754989:897953850
+  mtime: 1719754989:897953850
+  dev: 16777233	ino: 31081130
+  uid: 502	gid: 20
+  size: 841	flags: 0
+internals/flag_parsing.go
+  ctime: 1719753511:288495690
+  mtime: 1719753511:288495690
+  dev: 16777233	ino: 31075651
+  uid: 502	gid: 20
+  size: 1162	flags: 0
+internals/git/blob/git_blob.go
+  ctime: 1721932074:965341453
+  mtime: 1721932074:965341453
+  dev: 16777232	ino: 31075658
+  uid: 502	gid: 20
+  size: 2221	flags: 0
+internals/git/blob/git_blob_test.go
+  ctime: 1722024256:875810644
+  mtime: 1722024256:875810644
+  dev: 16777232	ino: 34361827
+  uid: 502	gid: 20
+  size: 3017	flags: 0
+internals/git/commit/git_commit.go
+  ctime: 1722968217:617238151
+  mtime: 1722968217:617238151
+  dev: 16777233	ino: 32811948
+  uid: 502	gid: 20
+  size: 2693	flags: 0
+internals/git/commit/git_commit_test.go
+  ctime: 1723054234:350711629
+  mtime: 1723054234:350711629
+  dev: 16777233	ino: 34527710
+  uid: 502	gid: 20
+  size: 4762	flags: 0
+internals/git/git_ignore.go
+  ctime: 1722193733:308756842
+  mtime: 1722193733:308756842
+  dev: 16777232	ino: 31075654
+  uid: 502	gid: 20
+  size: 1665	flags: 0
+internals/git/git_ignore_test.go
+  ctime: 1723056739:381962802
+  mtime: 1723056739:381962802
+  dev: 16777233	ino: 34785394
+  uid: 502	gid: 20
+  size: 1608	flags: 0
+internals/git/head/git_head.go
+  ctime: 1722968195:867788098
+  mtime: 1722968195:867788098
+  dev: 16777233	ino: 31075653
+  uid: 502	gid: 20
+  size: 1947	flags: 0
+internals/git/head/git_head_test.go
+  ctime: 1723054267:327628270
+  mtime: 1723054267:327628270
+  dev: 16777233	ino: 33235579
+  uid: 502	gid: 20
+  size: 1632	flags: 0
+internals/git/index/constants.go
+  ctime: 1720549774:971633010
+  mtime: 1720549774:971633010
+  dev: 16777233	ino: 31725094
+  uid: 502	gid: 20
+  size: 575	flags: 0
+internals/git/index/entry.go
+  ctime: 1720550811:247372127
+  mtime: 1720550811:247372127
+  dev: 16777233	ino: 31725853
+  uid: 502	gid: 20
+  size: 3579	flags: 0
+internals/git/index/errors.go
+  ctime: 1720545274:313028041
+  mtime: 1720545274:313028041
+  dev: 16777233	ino: 31726159
+  uid: 502	gid: 20
+  size: 282	flags: 0
+internals/git/index/extension_cache_tree.go
+  ctime: 1722360329:691384436
+  mtime: 1722360329:691384436
+  dev: 16777232	ino: 32811947
+  uid: 502	gid: 20
+  size: 6606	flags: 0
+internals/git/index/helpers.go
+  ctime: 1720467832:951470517
+  mtime: 1720467832:951470517
+  dev: 16777233	ino: 31728011
+  uid: 502	gid: 20
+  size: 531	flags: 0
+internals/git/index/index.go
+  ctime: 1722352103:602800035
+  mtime: 1722352103:602800035
+  dev: 16777232	ino: 32508330
+  uid: 502	gid: 20
+  size: 6805	flags: 0
+internals/git/index/mode.go
+  ctime: 1720550751:240709479
+  mtime: 1720550751:240709479
+  dev: 16777233	ino: 32068221
+  uid: 502	gid: 20
+  size: 1209	flags: 0
+internals/git/object/git_object.go
+  ctime: 1722969319:813389894
+  mtime: 1722969319:813389894
+  dev: 16777233	ino: 31075660
+  uid: 502	gid: 20
+  size: 2848	flags: 0
+internals/git/object/git_objects_test.go
+  ctime: 1721848555:807566572
+  mtime: 1721848555:807566572
+  dev: 16777232	ino: 34208328
+  uid: 502	gid: 20
+  size: 2957	flags: 0
+internals/git/sha/sha.go
+  ctime: 1722968270:906546634
+  mtime: 1722968270:906546634
+  dev: 16777233	ino: 31633524
+  uid: 502	gid: 20
+  size: 1121	flags: 0
+internals/git/sha/sha_test.go
+  ctime: 1723054288:8469636
+  mtime: 1723054288:8469636
+  dev: 16777233	ino: 33234622
+  uid: 502	gid: 20
+  size: 2415	flags: 0
+internals/git/tree/compare.go
+  ctime: 1722279335:212637431
+  mtime: 1722279335:212637431
+  dev: 16777232	ino: 34840184
+  uid: 502	gid: 20
+  size: 3717	flags: 0
+internals/git/tree/constants.go
+  ctime: 1721933597:32435626
+  mtime: 1721933597:32435626
+  dev: 16777232	ino: 34525529
+  uid: 502	gid: 20
+  size: 421	flags: 0
+internals/git/tree/from_dir.go
+  ctime: 1723054075:63651174
+  mtime: 1723054075:63651174
+  dev: 16777233	ino: 34525360
+  uid: 502	gid: 20
+  size: 1918	flags: 0
+internals/git/tree/from_dir_test.go
+  ctime: 1723054078:662935531
+  mtime: 1723054078:662935531
+  dev: 16777233	ino: 34945461
+  uid: 502	gid: 20
+  size: 1827	flags: 0
+internals/git/tree/git_tree.go
+  ctime: 1722193392:731168770
+  mtime: 1722193392:731168770
+  dev: 16777232	ino: 31075661
+  uid: 502	gid: 20
+  size: 2707	flags: 0
+internals/git/tree/git_tree_test.go
+  ctime: 1722091628:186471143
+  mtime: 1722091628:186471143
+  dev: 16777232	ino: 34673772
+  uid: 502	gid: 20
+  size: 5437	flags: 0
+internals/git/tree/tree_entry.go
+  ctime: 1722092431:137289840
+  mtime: 1722092431:137289840
+  dev: 16777232	ino: 34545903
+  uid: 502	gid: 20
+  size: 1196	flags: 0
+internals/git/tree/tree_entry_test.go
+  ctime: 1722092195:514127051
+  mtime: 1722092195:514127051
+  dev: 16777232	ino: 34680480
+  uid: 502	gid: 20
+  size: 5053	flags: 0
+internals/root.go
+  ctime: 1722967749:133486276
+  mtime: 1722967749:133486276
+  dev: 16777233	ino: 35795614
+  uid: 502	gid: 20
+  size: 435	flags: 0
+internals/utils.go
+  ctime: 1722968733:479562834
+  mtime: 1722968733:479562834
+  dev: 16777233	ino: 33914152
+  uid: 502	gid: 20
+  size: 395	flags: 0
+internals/utils_test.go
+  ctime: 1721156368:674365760
+  mtime: 1721156368:674365760
+  dev: 16777233	ino: 33234624
+  uid: 502	gid: 20
+  size: 413	flags: 0
+main.go
+  ctime: 1722541499:331610448
+  mtime: 1722541499:331610448
+  dev: 16777233	ino: 31075664
+  uid: 502	gid: 20
+  size: 1096	flags: 0
+tests/init_test.go
+  ctime: 1719753511:291240863
+  mtime: 1719753511:291240863
+  dev: 16777233	ino: 31075666
+  uid: 502	gid: 20
+  size: 66	flags: 0

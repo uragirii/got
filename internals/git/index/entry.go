@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"strings"
 	"syscall"
 
 	"github.com/uragirii/got/internals/git/sha"
@@ -129,6 +130,14 @@ func newIndexEntry(entry *[]byte, start, end int) (*IndexEntry, error) {
 		return nil, err
 	}
 
+	// last 12 bit are filepath len, choosing to ignore that
+	// actual flag is first 4 bit
+	// 1-bit assume-valid flag
+	// 1-bit extended flag (must be zero in version 2)
+	// 2-bit stage (during merge)
+
+	flag = flag >> 12
+
 	start += 2
 
 	filepath := (*entry)[start:end]
@@ -204,4 +213,19 @@ func (entry IndexEntry) Write(writer io.Writer) (int, error) {
 	n, _ = writer.Write(paddingSlice)
 
 	return bytesWritten + n, nil
+}
+
+func (entry IndexEntry) Debug() string {
+	var sb strings.Builder
+
+	sb.WriteString(entry.Filepath)
+	sb.WriteRune('\n')
+
+	sb.WriteString(fmt.Sprintf("  ctime: %d:%d\n", entry.ctime.Sec, entry.ctime.Nsec))
+	sb.WriteString(fmt.Sprintf("  mtime: %d:%d\n", entry.ctime.Sec, entry.ctime.Nsec))
+	sb.WriteString(fmt.Sprintf("  dev: %d\tino: %d\n", entry.devId, entry.inode))
+	sb.WriteString(fmt.Sprintf("  uid: %d\tgid: %d\n", entry.uid, entry.gid))
+	sb.WriteString(fmt.Sprintf("  size: %d\tflags: %d\n", entry.Size, entry.flag))
+
+	return sb.String()
 }

@@ -5,6 +5,7 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path"
@@ -75,20 +76,15 @@ func verifyIndexFile(fileContents *[]byte) error {
 	return nil
 }
 
-func New() (*Index, error) {
-	gitDir, err := internals.GetGitDir()
+func New(reader io.Reader) (*Index, error) {
 
-	if err != nil {
-		return nil, err
-	}
+	var b bytes.Buffer
 
-	fileContents, err := os.ReadFile(path.Join(gitDir, _IndexFileName))
+	b.ReadFrom(reader)
 
-	if err != nil {
-		return nil, err
-	}
+	fileContents := b.Bytes()
 
-	err = verifyIndexFile(&fileContents)
+	err := verifyIndexFile(&fileContents)
 
 	if err != nil {
 		return nil, err
@@ -282,6 +278,10 @@ func (i *Index) Add(filePaths []string, fsys fs.FS) error {
 
 			file, err := fsys.Open(filePath)
 
+			if err != nil {
+				panic(err)
+			}
+
 			obj, err := blob.FromFile(file)
 
 			if err != nil {
@@ -352,4 +352,12 @@ func (i *Index) Hydrate() error {
 	}
 
 	return nil
+}
+
+func (i Index) Debug(writer io.Writer) {
+	sortedEnteries := i.GetTrackedFiles()
+
+	for _, entry := range sortedEnteries {
+		writer.Write([]byte(entry.Debug()))
+	}
 }

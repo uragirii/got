@@ -56,7 +56,13 @@ func Status(c *internals.Command, gitPath string) {
 		panic(err)
 	}
 
-	indexFile, err := index.New()
+	file, err := gitFs.Open(index.IndexFileName)
+
+	if err != nil {
+		panic(err)
+	}
+
+	indexFile, err := index.New(file)
 
 	if err != nil {
 		panic(err)

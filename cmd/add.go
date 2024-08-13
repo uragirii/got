@@ -22,7 +22,21 @@ func Add(c *internals.Command, gitPath string) {
 		return
 	}
 
-	index, err := index.New()
+	gitDir, err := internals.GetGitDir()
+
+	if err != nil {
+		panic(err)
+	}
+
+	gitFs := os.DirFS(gitDir)
+
+	indexFile, err := gitFs.Open(index.IndexFileName)
+
+	if err != nil {
+		panic(err)
+	}
+
+	index, err := index.New(indexFile)
 
 	if err != nil {
 		panic(err)

@@ -1,6 +1,6 @@
 package index
 
-const _IndexFileName string = "index"
+const IndexFileName string = "index"
 const _NumFilesBytesLen int = 4
 
 // File metadata like ctime, mtime etc
