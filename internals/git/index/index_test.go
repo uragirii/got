@@ -77,6 +77,45 @@ func TestIndex(t *testing.T) {
 			}
 		})
 
+		t.Run(fmt.Sprintf("Checks write for %s", testCase.Name), func(t *testing.T) {
+			indexFile, err := os.Open(path.Join(TEST_DIR, testCase.Name))
+
+			if err != nil {
+				t.Fatalf("File %s failed with %v", testCase.Name, err)
+			}
+
+			i, err := index.New(indexFile)
+
+			if err != nil {
+				t.Fatalf("File %s failed with %v", testCase.Name, err)
+			}
+
+			var b bytes.Buffer
+
+			i.Write(&b)
+
+			indexFile, err = os.Open(path.Join(TEST_DIR, testCase.Name))
+
+			if err != nil {
+				t.Fatalf("File %s failed with %v", testCase.Name, err)
+			}
+
+			var indexFileBuffer bytes.Buffer
+
+			indexFileBuffer.ReadFrom(indexFile)
+
+			actualBytes := indexFileBuffer.Bytes()
+			gotBytes := b.Bytes()
+
+			isSame := bytes.Compare(actualBytes, gotBytes)
+
+			if isSame != 0 {
+				t.Logf(testutils.DiffBytes(&actualBytes, &gotBytes))
+				t.Fatal("Write output doesnt match")
+			}
+
+		})
+
 	}
 
 }

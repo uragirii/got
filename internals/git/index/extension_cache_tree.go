@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/uragirii/got/internals"
 	"github.com/uragirii/got/internals/git/sha"
@@ -168,8 +169,7 @@ func (tree CacheTree) Write(writer io.Writer) (int, error) {
 			return false
 		}
 
-		return tree.SubTrees[j].RelPath < tree.SubTrees[i].RelPath
-
+		return strings.Compare(tree.SubTrees[i].RelPath, tree.SubTrees[j].RelPath) < 0
 	})
 
 	for _, subTree := range tree.SubTrees {

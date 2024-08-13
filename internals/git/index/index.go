@@ -209,7 +209,32 @@ func (i *Index) GetTrackedFiles() []*IndexEntry {
 	return indexEnteries
 }
 
-func (i *Index) Write() error {
+func (i *Index) WriteToFile() error {
+	gitDir, err := internals.GetGitDir()
+
+	if err != nil {
+		return err
+	}
+
+	fi, err := os.Create(path.Join(gitDir, IndexFileName))
+
+	if err != nil {
+		return err
+	}
+
+	defer fi.Close()
+
+	err = i.Write(fi)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (i *Index) Write(writer io.Writer) error {
+
 	var buffer bytes.Buffer
 
 	buffer.Write(_IndexFileHeader[:])
@@ -236,34 +261,16 @@ func (i *Index) Write() error {
 
 	writeUint32(uint32(cacheTreeBuffer.Len()), &buffer)
 
-	buffer.Write(cacheTreeBuffer.Bytes())
+	buffer.ReadFrom(&cacheTreeBuffer)
 
 	indexBytes := buffer.Bytes()
 
 	sha := sha1.Sum(indexBytes)
 
-	fi, err := os.Create("index")
-
-	if err != nil {
-		return err
-	}
-
-	defer fi.Close()
-
-	_, err = fi.Write(indexBytes)
-
-	if err != nil {
-		return err
-	}
-
-	_, err = fi.Write(sha[:])
-
-	if err != nil {
-		return err
-	}
+	writer.Write(indexBytes)
+	writer.Write(sha[:])
 
 	return nil
-
 }
 
 // Adds the files to the index

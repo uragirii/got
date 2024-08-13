@@ -8,7 +8,9 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"path"
 
+	"github.com/uragirii/got/internals"
 	"github.com/uragirii/got/internals/git/object"
 	"github.com/uragirii/got/internals/git/sha"
 )
@@ -86,6 +88,14 @@ func (blob Blob) WriteToFile() error {
 	if err != nil {
 		return err
 	}
+
+	gitDir, err := internals.GetGitDir()
+
+	if err != nil {
+		return err
+	}
+
+	blobPath = path.Join(gitDir, blobPath)
 
 	if _, err := os.Stat(blobPath); errors.Is(err, os.ErrNotExist) {
 

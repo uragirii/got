@@ -45,13 +45,38 @@ func Diff(correct, incorrect string) string {
 			sb.WriteRune('\n')
 			sb.WriteString(color.GreenString(incorrectLine))
 			sb.WriteRune('\n')
-			sb.WriteRune('|')
-			sb.WriteString(diffLine(correctLine, incorrectLine))
-			sb.WriteRune('|')
-			sb.WriteRune('\n')
+			// sb.WriteRune('|')
+			// sb.WriteString(diffLine(correctLine, incorrectLine))
+			// sb.WriteRune('|')
+			// sb.WriteRune('\n')
 
 		}
 	}
 
 	return sb.String()
+}
+
+func DiffBytes(correct, incorrect *[]byte) string {
+	var correctStr strings.Builder
+	var incorrectStr strings.Builder
+
+	for i, r := range *correct {
+
+		correctStr.WriteString(fmt.Sprintf("% x", r))
+
+		if (i+1)%10 == 0 {
+			correctStr.WriteRune('\n')
+		}
+	}
+
+	for i, r := range *incorrect {
+
+		incorrectStr.WriteString(fmt.Sprintf("% x", r))
+
+		if (i+1)%10 == 0 {
+			incorrectStr.WriteRune('\n')
+		}
+	}
+
+	return Diff(correctStr.String(), incorrectStr.String())
 }

@@ -195,7 +195,13 @@ func (entry IndexEntry) Write(writer io.Writer) (int, error) {
 
 	bytesWritten += n
 
-	flagBytes, _ := hex.DecodeString(fmt.Sprintf("%04x", entry.flag))
+	flag := entry.flag
+
+	fileLenTrunc := len(entry.Filepath) & 0xfff
+
+	flag = flag<<12 | uint64(fileLenTrunc)
+
+	flagBytes, _ := hex.DecodeString(fmt.Sprintf("%04x", flag))
 
 	n, _ = writer.Write(flagBytes)
 	bytesWritten += n

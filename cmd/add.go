@@ -43,6 +43,6 @@ func Add(c *internals.Command, gitPath string) {
 	}
 
 	index.Add(c.Args, os.DirFS("."))
-	index.Write()
+	index.WriteToFile()
 
 }
