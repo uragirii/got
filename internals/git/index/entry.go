@@ -228,7 +228,7 @@ func (entry IndexEntry) Debug() string {
 	sb.WriteRune('\n')
 
 	sb.WriteString(fmt.Sprintf("  ctime: %d:%d\n", entry.ctime.Sec, entry.ctime.Nsec))
-	sb.WriteString(fmt.Sprintf("  mtime: %d:%d\n", entry.ctime.Sec, entry.ctime.Nsec))
+	sb.WriteString(fmt.Sprintf("  mtime: %d:%d\n", entry.mtime.Sec, entry.mtime.Nsec))
 	sb.WriteString(fmt.Sprintf("  dev: %d\tino: %d\n", entry.devId, entry.inode))
 	sb.WriteString(fmt.Sprintf("  uid: %d\tgid: %d\n", entry.uid, entry.gid))
 	sb.WriteString(fmt.Sprintf("  size: %d\tflags: %d\n", entry.Size, entry.flag))
