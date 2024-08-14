@@ -2,7 +2,7 @@ package index
 
 import (
 	"io"
-	"os"
+	"io/fs"
 )
 
 // binary are 1000 (regular file), 1010 (symbolic link) and 1110 (gitlink)
@@ -40,8 +40,8 @@ func modeFromUint32(m uint32) (*mode, error) {
 	return mode, nil
 }
 
-func modeFromFilePath(filePath string) (*mode, error) {
-	stat, err := os.Stat(filePath)
+func modeFromFilePath(filePath string, fsys fs.FS) (*mode, error) {
+	stat, err := fs.Stat(fsys, filePath)
 
 	if err != nil {
 		return nil, err

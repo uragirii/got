@@ -310,6 +310,12 @@ testdata/index/staged.debug
   dev: 16777232	ino: 36532834
   uid: 502	gid: 20
   size: 7984	flags: 0
+testfile.txt
+  ctime: 1723625479:560332952
+  mtime: 1723625479:560332952
+  dev: 16777232	ino: 36578468
+  uid: 502	gid: 20
+  size: 19	flags: 0
 tests/init_test.go
   ctime: 1719753511:291240863
   mtime: 1719753511:291240863

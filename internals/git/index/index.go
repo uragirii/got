@@ -27,6 +27,10 @@ type Index struct {
 	sha       *sha.SHA
 }
 
+var (
+	SysStat = syscall.Stat
+)
+
 func verifyIndexFile(fileContents *[]byte) error {
 	if len(*fileContents) < (len(_IndexFileHeader) + len(_IndexFileSupportedVersion)) {
 		return ErrInvalidIndex
@@ -297,11 +301,11 @@ func (i *Index) Add(filePaths []string, fsys fs.FS) error {
 
 			var fileStat syscall.Stat_t
 
-			if err = syscall.Stat(filePath, &fileStat); err != nil {
+			if err = SysStat(filePath, &fileStat); err != nil {
 				panic(err)
 			}
 
-			mode, err := modeFromFilePath(filePath)
+			mode, err := modeFromFilePath(filePath, fsys)
 
 			if err != nil {
 				panic(err)
@@ -317,7 +321,7 @@ func (i *Index) Add(filePaths []string, fsys fs.FS) error {
 				inode: uint32(fileStat.Ino),
 				// fixme
 				// TODO: as other flag is always unset, this should be fine
-				flag:     uint64(len(filePath)),
+				flag:     0,
 				Size:     uint32(fileStat.Size),
 				SHA:      obj.GetSHA(),
 				Filepath: filePath,
