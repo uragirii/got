@@ -20,7 +20,7 @@ var STATUS *internals.Command = &internals.Command{
 	Run:   Status,
 }
 
-func Status(c *internals.Command, gitPath string) {
+func Status(c *internals.Command, _ string) {
 
 	gitDir, err := internals.GetGitDir()
 
@@ -42,7 +42,7 @@ func Status(c *internals.Command, gitPath string) {
 		panic(err)
 	}
 
-	rootFs := os.DirFS(path.Join(gitPath, ".."))
+	rootFs := os.DirFS(path.Join(gitDir, ".."))
 
 	treeObj, err := tree.FromDir(rootFs)
 
