@@ -22,8 +22,11 @@ func (sha *SHA) Eq(other *SHA) bool {
 }
 
 func FromByteSlice(byteSlice *[]byte) (*SHA, error) {
+	trimmedBytes := *byteSlice
 
-	trimmedBytes := bytes.Trim(*byteSlice, "\n")
+	if len(trimmedBytes) > BYTES_LEN {
+		trimmedBytes = bytes.Trim(trimmedBytes, "\n")
+	}
 
 	return &SHA{
 		hash: &trimmedBytes,
