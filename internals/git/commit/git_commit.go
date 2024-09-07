@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/fs"
 	"strings"
+	"time"
 
 	"github.com/uragirii/got/internals/git/object"
 	"github.com/uragirii/got/internals/git/sha"
@@ -18,8 +19,11 @@ type Commit struct {
 	sha       *sha.SHA
 	message   string
 
-	// author Person
-	// commiter Person
+	author   person
+	commiter person
+
+	authorTime time.Time
+	commitTime time.Time
 }
 
 var ErrInvalidCommit = fmt.Errorf("invalid commit")
@@ -52,8 +56,8 @@ func FromSHA(SHA *sha.SHA, gitFsys fs.FS) (*Commit, error) {
 
 	treeLine := lines[0]
 	parentLine := lines[1]
-
-	// TODO: parse author and committer
+	authorLine := lines[2]
+	commiterLine := lines[3]
 
 	treeSha, err := sha.FromString(strings.Split(treeLine, " ")[1])
 
@@ -69,15 +73,22 @@ func FromSHA(SHA *sha.SHA, gitFsys fs.FS) (*Commit, error) {
 
 	tree, err := tree.FromSHA(treeSha, gitFsys)
 
+	author, authorTime := parseAuthorLine(authorLine)
+	commiter, commiterTime := parseAuthorLine(commiterLine)
+
 	if err != nil {
 		return nil, err
 	}
 
 	return &Commit{
-		Tree:      tree,
-		sha:       SHA,
-		message:   commitMsg,
-		parentSHA: parentSha,
+		Tree:       tree,
+		sha:        SHA,
+		message:    commitMsg,
+		parentSHA:  parentSha,
+		author:     author,
+		authorTime: authorTime,
+		commiter:   commiter,
+		commitTime: commiterTime,
 	}, nil
 
 }
@@ -95,11 +106,12 @@ func (commit Commit) String() string {
 
 	sb.WriteString(fmt.Sprintf("tree %s\n", commit.Tree.SHA))
 	sb.WriteString(fmt.Sprintf("parent %s\n", commit.parentSHA))
-	// 	author Apoorv Kansal <apoorvkansalak@gmail.com> 1720643686 +0530
-	// committer Apoorv Kansal <apoorvkansalak@gmail.com> 1720643686 +053
-	fmt.Println("WARN person and commiter not parsed for commit")
-	sb.WriteString("author Apoorv Kansal <apoorvkansalak@gmail.com> 1720643686 +0530\n")
-	sb.WriteString("committer Apoorv Kansal <apoorvkansalak@gmail.com> 1720643686 +0530\n")
+	sb.WriteString("author Apoorv Kansal <apoorvkansalak@gmail.com> ")
+	sb.WriteString(toGitTime(commit.authorTime))
+	sb.WriteRune('\n')
+	sb.WriteString("committer Apoorv Kansal <apoorvkansalak@gmail.com> ")
+	sb.WriteString(toGitTime(commit.commitTime))
+	sb.WriteRune('\n')
 	sb.WriteString("\n")
 	sb.WriteString(strings.Trim(commit.message, "\n"))
 	sb.WriteString("\n")
