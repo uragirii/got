@@ -3,9 +3,12 @@ package testutils
 import (
 	"fmt"
 	"strings"
+	"unicode"
 
 	"github.com/uragirii/got/internals/color"
 )
+
+const CHARS_PER_LINE = 16
 
 func diffLine(correctLine, incorrectLine string) string {
 	var sb strings.Builder
@@ -35,7 +38,13 @@ func Diff(correct, incorrect string) string {
 	incorrectSplitted := strings.Split(incorrect, "\n")
 
 	for i, correctLine := range correctSplitted {
-		incorrectLine := incorrectSplitted[i]
+
+		incorrectLine := ""
+
+		if i < len(incorrectSplitted) {
+			incorrectLine = incorrectSplitted[i]
+
+		}
 
 		if incorrectLine == correctLine {
 			sb.WriteString(correctLine)
@@ -56,27 +65,67 @@ func Diff(correct, incorrect string) string {
 	return sb.String()
 }
 
+func splitAfterN(b *[]byte, n int) [][]byte {
+	ret := make([][]byte, 0, len(*b)/n)
+
+	for i := 0; i < len(*b); {
+		item := make([]byte, 0, n)
+
+		for j := range n {
+			if i+j >= len(*b) {
+				ret = append(ret, item)
+				return ret
+			}
+
+			item = append(item, (*b)[i+j])
+
+		}
+
+		ret = append(ret, item)
+
+		i += n
+	}
+
+	return ret
+}
+
+func hexdumpC(input *[]byte) string {
+	var formattedStr strings.Builder
+
+	splitted := splitAfterN(input, CHARS_PER_LINE)
+
+	for _, itemBuff := range splitted {
+
+		for _, item := range itemBuff {
+			formattedStr.WriteString(fmt.Sprintf("%02x ", item))
+		}
+
+		if len(itemBuff) < CHARS_PER_LINE {
+			formattedStr.WriteString(strings.Repeat(" ", (CHARS_PER_LINE-len(itemBuff))*3))
+		}
+
+		formattedStr.WriteString(" | ")
+
+		for _, item := range itemBuff {
+			if unicode.IsPrint(rune(item)) {
+
+				formattedStr.WriteString(string(item))
+
+			} else {
+				formattedStr.WriteString(".")
+			}
+		}
+
+		formattedStr.WriteString("\n")
+
+	}
+
+	return formattedStr.String()
+}
+
 func DiffBytes(correct, incorrect *[]byte) string {
-	var correctStr strings.Builder
-	var incorrectStr strings.Builder
+	correctStr := hexdumpC(correct)
+	incorrectStr := hexdumpC(incorrect)
 
-	for i, r := range *correct {
-
-		correctStr.WriteString(fmt.Sprintf("% x", r))
-
-		if (i+1)%10 == 0 {
-			correctStr.WriteRune('\n')
-		}
-	}
-
-	for i, r := range *incorrect {
-
-		incorrectStr.WriteString(fmt.Sprintf("% x", r))
-
-		if (i+1)%10 == 0 {
-			incorrectStr.WriteRune('\n')
-		}
-	}
-
-	return Diff(correctStr.String(), incorrectStr.String())
+	return Diff(correctStr, incorrectStr)
 }
