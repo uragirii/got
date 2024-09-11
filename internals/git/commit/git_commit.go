@@ -1,13 +1,20 @@
 package commit
 
 import (
+	"bytes"
 	"compress/zlib"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
+	"os"
+	"path"
 	"strings"
 	"time"
 
+	"github.com/uragirii/got/internals"
+	"github.com/uragirii/got/internals/git/head"
+	"github.com/uragirii/got/internals/git/index"
 	"github.com/uragirii/got/internals/git/object"
 	"github.com/uragirii/got/internals/git/sha"
 	"github.com/uragirii/got/internals/git/tree"
@@ -142,6 +149,116 @@ func (commit Commit) Write(writer io.Writer) error {
 	return w.Close()
 }
 
+func (commit Commit) WriteToFile() error {
+	objPath, err := commit.sha.GetObjPath()
+
+	if err != nil {
+		return err
+	}
+
+	gitDir, err := internals.GetGitDir()
+
+	if err != nil {
+		return err
+	}
+
+	objPath = path.Join(gitDir, objPath)
+
+	if _, err := os.Stat(objPath); errors.Is(err, os.ErrNotExist) {
+		var buffer bytes.Buffer
+
+		err = commit.Write(&buffer)
+
+		if err != nil {
+			return err
+		}
+
+		err = os.MkdirAll(path.Join(objPath, ".."), 0755)
+
+		if err != nil {
+			return err
+		}
+
+		return os.WriteFile(objPath, buffer.Bytes(), 0444) // Read only file
+
+	}
+
+	return nil
+}
+
 func (commit Commit) Raw() string {
 	return commit.String()
+}
+
+func (commit *Commit) CalculateSha() error {
+	raw := []byte(commit.Raw())
+	header := []byte(fmt.Sprintf(object.CommitHeader, len(raw)))
+	raw = append(header, raw...)
+
+	sha, err := sha.FromData(&raw)
+
+	if err != nil {
+		return err
+	}
+
+	commit.sha = sha
+
+	return nil
+}
+
+func New(gitFs fs.FS, message string) (*Commit, error) {
+
+	indexFile, err := gitFs.Open(index.IndexFileName)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer indexFile.Close()
+
+	index, err := index.New(indexFile)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if err = index.Hydrate(); err != nil {
+		return nil, err
+	}
+
+	treeSha := index.GetTreeSHA()
+
+	head, err := head.New(gitFs)
+
+	if err != nil {
+		return nil, err
+	}
+
+	tree, err := tree.FromSHA(treeSha, gitFs)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: Read these from global config
+	p := person{
+		name:  "Apoorv Kansal",
+		email: "apoorvkansalak@gmail.com",
+	}
+
+	commit := &Commit{
+		parentSHA:  head.SHA,
+		message:    message,
+		Tree:       tree,
+		author:     p,
+		authorTime: time.Now(),
+		commiter:   p,
+		commitTime: time.Now(),
+	}
+
+	if err = commit.CalculateSha(); err != nil {
+		return nil, err
+	}
+
+	return commit, nil
 }

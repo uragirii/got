@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"os"
+	"path"
 	"strings"
 
+	"github.com/uragirii/got/internals"
 	"github.com/uragirii/got/internals/git/sha"
 )
 
@@ -121,4 +124,50 @@ func New(gitFs fs.FS) (*Head, error) {
 	defer headFile.Close()
 
 	return newHead(headFile, gitFs)
+}
+
+func (head *Head) SetTo(sha *sha.SHA, mode Mode) {
+	head.SHA = sha
+	head.Mode = mode
+}
+
+func writeDetachedHead(sha *sha.SHA) error {
+	gitDir, err := internals.GetGitDir()
+
+	if err != nil {
+		return err
+	}
+
+	headFile, err := os.Open(path.Join(gitDir, _HeadFile))
+
+	if err != nil {
+		return err
+	}
+
+	defer headFile.Close()
+
+	headFile.WriteString(sha.String())
+
+	return nil
+}
+
+func writeBranchHead(sha *sha.SHA, branch string) error {
+	gitDir, err := internals.GetGitDir()
+
+	if err != nil {
+		return err
+	}
+
+	branchFilePath := path.Join(gitDir, _BranchPrefix+branch)
+
+	return os.WriteFile(branchFilePath, []byte(sha.String()+"\n"), 0644)
+
+}
+
+func (head *Head) WriteToFile() error {
+	if head.Mode == Detached {
+		return writeDetachedHead(head.SHA)
+	}
+
+	return writeBranchHead(head.SHA, head.Branch)
 }

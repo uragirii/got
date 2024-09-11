@@ -235,8 +235,6 @@ func (tree *CacheTree) Hydrate(basePath string, index *Index) (int, error) {
 		return tree.EntryCount, nil
 	}
 
-	fmt.Println("invalidating ", tree.RelPath)
-
 	gitDir, err := internals.GetGitDir()
 
 	if err != nil {
@@ -274,7 +272,6 @@ func (tree *CacheTree) Hydrate(basePath string, index *Index) (int, error) {
 
 		// file is in gitignore possibly
 		if !index.Has(filePath) {
-			fmt.Println("ignoring", filePath)
 			continue
 		}
 
@@ -290,17 +287,12 @@ func (tree *CacheTree) Hydrate(basePath string, index *Index) (int, error) {
 
 	}
 
-	if tree.RelPath == "object" {
-		fmt.Println("Entrycount", entryCount)
-	}
-
 	for _, subTree := range tree.SubTrees {
 		subTreeEntryCount, err := subTree.Hydrate(dirPath, index)
 
 		if err != nil {
 			return 0, nil
 		}
-		fmt.Println("\thydrate", subTree.RelPath, subTreeEntryCount)
 
 		entryCount += subTreeEntryCount
 
@@ -314,19 +306,18 @@ func (tree *CacheTree) Hydrate(basePath string, index *Index) (int, error) {
 	gitTree, err := objTree.FromEnteries(enteries)
 
 	if err != nil {
-		fmt.Println("err gitTree", entryCount)
 
 		return 0, nil
 	}
 
 	tree.EntryCount = entryCount
+	tree.IsInvalidated = false
 
 	tree.SHA = gitTree.SHA
 
 	err = gitTree.WriteToFile()
 
 	if err != nil {
-		fmt.Println("err write", entryCount, err)
 
 		return 0, nil
 	}

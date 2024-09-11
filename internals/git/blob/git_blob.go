@@ -101,7 +101,13 @@ func (blob Blob) WriteToFile() error {
 
 		var compressBytes bytes.Buffer
 
-		err := blob.Write(&compressBytes)
+		err := os.MkdirAll(path.Join(blobPath, ".."), 0755)
+
+		if err != nil {
+			return err
+		}
+
+		err = blob.Write(&compressBytes)
 
 		if err != nil {
 			return err

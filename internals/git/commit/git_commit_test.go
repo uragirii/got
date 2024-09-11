@@ -87,6 +87,13 @@ func TestCommit(t *testing.T) {
 			t.Errorf("expected raw string to be `%s` but got `%s`", TEST_COMMIT_STR, commit.String())
 		}
 
+		commit.CalculateSha()
+
+		if !commit.GetSHA().Eq(objSha) {
+			t.Errorf("expected commit sha to be `%s` but got `%s`", objSha.String(), commit.GetSHA().String())
+
+		}
+
 		if commit.GetObjType() != object.CommitObj {
 			t.Errorf("expected object type to be %s but got %s", object.CommitObj, commit.GetObjType())
 		}

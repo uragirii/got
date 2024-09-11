@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/uragirii/got/internals"
 	"github.com/uragirii/got/internals/git/object"
 	"github.com/uragirii/got/internals/git/sha"
 )
@@ -109,6 +110,14 @@ func (tree Tree) WriteToFile() error {
 	if err != nil {
 		return err
 	}
+
+	gitDir, err := internals.GetGitDir()
+
+	if err != nil {
+		return err
+	}
+
+	objPath = path.Join(gitDir, objPath)
 
 	if _, err := os.Stat(objPath); errors.Is(err, os.ErrNotExist) {
 		var buffer bytes.Buffer

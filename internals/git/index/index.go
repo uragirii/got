@@ -372,3 +372,7 @@ func (i Index) Debug(writer io.Writer) {
 		writer.Write([]byte(entry.Debug()))
 	}
 }
+
+func (i Index) GetTreeSHA() *sha.SHA {
+	return i.cacheTree.SHA
+}
