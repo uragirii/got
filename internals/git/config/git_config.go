@@ -18,6 +18,22 @@ type Config struct {
 
 const _GLOBAL_CONFIG_PATH = ".gitconfig"
 
+func getConfigFilePath() (string, error) {
+	configPathOverwrite := os.Getenv("GIT_CONFIG")
+
+	if configPathOverwrite != "" {
+		return configPathOverwrite, nil
+	}
+	dirName, err := os.UserHomeDir()
+
+	if err != nil {
+		return "", err
+	}
+
+	return path.Join(dirName, _GLOBAL_CONFIG_PATH), nil
+
+}
+
 func userSectionParser(sectionLines []string, config *Config) error {
 
 	for _, line := range sectionLines {
@@ -102,15 +118,14 @@ func New(reader io.Reader) (*Config, error) {
 }
 
 func FromFile() (*Config, error) {
-	dirName, err := os.UserHomeDir()
+
+	configFilePath, err := getConfigFilePath()
 
 	if err != nil {
 		return nil, err
 	}
 
-	configPath := path.Join(dirName, _GLOBAL_CONFIG_PATH)
-
-	configFile, err := os.Open(configPath)
+	configFile, err := os.Open(configFilePath)
 
 	if err != nil {
 		return nil, err
