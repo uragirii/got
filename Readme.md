@@ -10,7 +10,7 @@ got is a lightweight Git client written in Go. This project serves as a learning
 
 **Current Status**
 
-Currently working on handling errors gracefully. The next focus will be on implementing `git checkout and `git branch`.
+Currently working on handling errors gracefully. The next focus will be on implementing `git checkout` and `git branch`.
 
 ## Supported Commands
 
