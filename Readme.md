@@ -1,14 +1,40 @@
 # got
 
-A very basic git client written in golang. This project isn't meant to be a complete git client but a project for me to learn go. I will only implement some very common used git commands and flags. My longterm goal is that this repo can be tracked by both the git client and the got binary. Probably use them interchangebly.
+got is a lightweight Git client written in Go. This project serves as a learning experience for me to explore the Go programming language. While not a comprehensive Git replacement, it implements some commonly used commands and flags.
 
-Current Progress: working on `git commit`, but before that I'm working on writing tests.
+**Goals**
+
+- Implement essential Git commands.
+- Learn and improve Go development practices.
+- Track this project's development using both Git and got (interchangebly).
+
+**Current Status**
+
+Currently working on handling errors gracefully. The next focus will be on implementing `git checkout and `git branch`.
+
+## Supported Commands
+
+Note: Not all flags are currently supported. Basic functionality is implemented. Refer to the corresponding files in the `/cmd` folder for details.
+
+- `git init`: Initializes a new Git repository. (Does nothing if already existing)
+- `git status`: Displays the working directory status, including staged, tracked, and untracked files.
+- `git add`: Starts tracking a file, adding it to the staging area (index).
+- `git commit`: Commits staged changes. The output may differ slightly from the standard git command.
+
+**Internal Commands**
+
+- `git cat-file`: Pretty prints or uncompresses a Git object.
+- `git hash-objects`: Calculates the SHA hash of an object, supporting multiple files.
+- `git ls-files`: Lists all files tracked in the index, in their tracked order.
 
 ## Project Structure
 
-`/cmd` folder contains implemetation for each commands I've implemented. Currently, I've added support for `git init`, `git add`, `git status`. Along with them, I've also added `git ls-files`, `git hash-object`, `git cat-file` as they were used to debug and test some internal working of git.
-
-`/internals` contains all the internal stuff, `/internal/git` contains git internal implementation like `object`, `head`, `index` file parsing. File names should be self-explanatory.
+- `/cmd`: Contains individual files for each supported command.
+- `/internals`: Houses packages used by got:
+  - `color`: Simple color printing functionality
+  - `test_utils`: Suprise suprise! Contains test utilites
+  - `git`: Core Git functionality. Further subfolders represent internal Git operations.
+- `/testdata`: Contains raw files copied from this project's own .git folder for testing purposes.
 
 I have also documented my process on Twitter in [this thread](https://x.com/quacky_batak/status/1799424455586017747) (also check quote tweets)
 
