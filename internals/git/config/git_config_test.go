@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/uragirii/got/internals/git/config"
+	testutils "github.com/uragirii/got/internals/test_utils"
 )
 
 const TEST_USER_NAME = "Apoorv Kansal"
@@ -28,12 +29,8 @@ var TEST_CONFIG_FILE = fmt.Sprintf(`[credential "https://github.com"]
 func assertConfig(c *config.Config, t *testing.T) {
 	t.Helper()
 
-	if c.User.Name != TEST_USER_NAME {
-		t.Errorf("Expected name to be `%s` but got `%s`", TEST_USER_NAME, c.User.Name)
-	}
-	if c.User.Email != TEST_USER_EMAIL {
-		t.Errorf("Expected email to be `%s` but got `%s`", TEST_USER_EMAIL, c.User.Email)
-	}
+	testutils.AssertString(t, "name", TEST_USER_NAME, c.User.Name)
+	testutils.AssertString(t, "email", TEST_USER_EMAIL, c.User.Email)
 
 }
 

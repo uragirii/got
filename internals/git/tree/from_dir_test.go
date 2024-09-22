@@ -5,6 +5,7 @@ import (
 	"testing/fstest"
 
 	"github.com/uragirii/got/internals/git/tree"
+	testutils "github.com/uragirii/got/internals/test_utils"
 )
 
 const TREE_DIR_STR = "6d06cf3cdd7763dc6d938823dd3ca9cb9ccb8cb3"
@@ -41,16 +42,8 @@ func TestFromDir(t *testing.T) {
 		t.Errorf("expected error to be nil but got %s", err)
 	}
 
-	if tree.SHA.String() != TREE_DIR_STR {
-		t.Errorf("expected error to be %s but got %s", TREE_DIR_STR, tree.SHA)
-	}
-
-	if tree.String() != TREE_DIR_PRETTY_STR {
-		t.Errorf("expected error to be %s but got %s", TREE_DIR_PRETTY_STR, tree)
-	}
-
-	if tree.Raw() != string(TREE_DIR_RAW) {
-		t.Errorf("expected error to be % x but got % x", tree.Raw(), TREE_DIR_RAW)
-	}
+	testutils.AssertString(t, "sha", TREE_DIR_STR, tree.SHA.String())
+	testutils.AssertString(t, "pretty print", TREE_DIR_PRETTY_STR, tree.String())
+	testutils.AssertString(t, "raw string", string(TREE_DIR_RAW), tree.Raw())
 
 }

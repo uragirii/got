@@ -83,12 +83,7 @@ func TestIndexDebug(t *testing.T) {
 
 			i.Debug(&b)
 
-			isSame := bytes.Compare(debugOutput, b.Bytes())
-
-			if isSame != 0 {
-				t.Log(testutils.Diff(string(debugOutput), b.String()))
-				t.Fatal("Debug output doesnt match")
-			}
+			testutils.AssertBytes(t, "debug", debugOutput, b.Bytes())
 		})
 	}
 
@@ -132,12 +127,7 @@ func TestIndexWrite(t *testing.T) {
 			actualBytes := indexFileBuffer.Bytes()
 			gotBytes := b.Bytes()
 
-			isSame := bytes.Compare(actualBytes, gotBytes)
-
-			if isSame != 0 {
-				t.Logf(testutils.DiffBytes(&actualBytes, &gotBytes))
-				t.Fatal("Write output doesnt match")
-			}
+			testutils.AssertBytes(t, "write", actualBytes, gotBytes)
 
 		})
 
@@ -206,11 +196,6 @@ func TestIndexAdd(t *testing.T) {
 	addedFileBytes := addedFilesBuffer.String()
 	gotBytes := b.String()
 
-	isSame := strings.Compare(addedFileBytes, gotBytes)
-
-	if isSame != 0 {
-		t.Log(testutils.Diff(addedFileBytes, gotBytes))
-		t.Fatal("Debug output doesnt match")
-	}
+	testutils.AssertString(t, "debug", addedFileBytes, gotBytes)
 
 }

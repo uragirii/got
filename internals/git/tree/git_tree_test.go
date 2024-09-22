@@ -8,6 +8,7 @@ import (
 	"github.com/uragirii/got/internals/git/object"
 	"github.com/uragirii/got/internals/git/sha"
 	"github.com/uragirii/got/internals/git/tree"
+	testutils "github.com/uragirii/got/internals/test_utils"
 )
 
 const TEST_TREE_STR = `100644 blob 66305f506530406dcb4bd5bf5534c00bbdb3cb35	.gitignore
@@ -84,13 +85,8 @@ func TestTree(t *testing.T) {
 			t.Errorf("expected the sha to be %s but got %s", DATA_SHA_STR, tree.GetSHA())
 		}
 
-		if tree.String() != TEST_TREE_STR {
-			t.Errorf("expected string to be %s but got %s", TEST_TREE_STR, tree.String())
-		}
-
-		if tree.Raw() != string(TREE_RAW_OUTPUT) {
-			t.Errorf("expected raw string to be `%s` but got `%s`", TREE_RAW_OUTPUT, tree.String())
-		}
+		testutils.AssertString(t, "string", TEST_TREE_STR, tree.String())
+		testutils.AssertString(t, "raw", string(TREE_RAW_OUTPUT), tree.Raw())
 
 		if tree.GetObjType() != object.TreeObj {
 			t.Errorf("expected object type to be %s but got %s", object.CommitObj, tree.GetObjType())
@@ -102,8 +98,6 @@ func TestTree(t *testing.T) {
 
 		compressedBytes := buffer.Bytes()
 
-		if !bytes.Equal(compressedBytes, TREE_COMPRESSED_BYTES) {
-			t.Errorf("expected the raw to be \n% x\n\n but got \n% x", TREE_COMPRESSED_BYTES, compressedBytes)
-		}
+		testutils.AssertBytes(t, "raw compressed", TREE_COMPRESSED_BYTES, compressedBytes)
 	})
 }

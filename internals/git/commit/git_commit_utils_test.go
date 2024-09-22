@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
+	testutils "github.com/uragirii/got/internals/test_utils"
 )
 
 const TEST_USER_NAME = "Apoorv Kansal"
@@ -19,13 +21,8 @@ func TestParseAuthorLine(t *testing.T) {
 	correctTime, _ := time.Parse(time.RFC1123Z, TIME_STR)
 	authorPerson, authorTime := parseAuthorLine(TEST_AUTHOR_LINE)
 
-	if authorPerson.Email != TEST_USER_EMAIL {
-		t.Errorf("got wrong email address %s", authorPerson.Email)
-	}
-
-	if authorPerson.Name != TEST_USER_NAME {
-		t.Errorf("got wrong name %s", authorPerson.Name)
-	}
+	testutils.AssertString(t, "email", TEST_USER_EMAIL, authorPerson.Email)
+	testutils.AssertString(t, "name", TEST_USER_NAME, authorPerson.Name)
 
 	if correctTime.Format(time.RFC1123Z) != authorTime.Format(time.RFC1123Z) {
 		t.Errorf("got wrong time expected: %s got :%s", correctTime.Format(time.RFC1123Z), authorTime.Format(time.RFC1123Z))
@@ -38,12 +35,11 @@ func TestParseCommitterLine(t *testing.T) {
 
 	authorPerson, authorTime := parseCommitterLine(TEST_COMMITTER_LINE)
 
+	testutils.AssertString(t, "email", TEST_USER_EMAIL, authorPerson.Email)
+	testutils.AssertString(t, "name", TEST_USER_NAME, authorPerson.Name)
+
 	if authorPerson.Email != TEST_USER_EMAIL {
 		t.Errorf("got wrong email address %s", authorPerson.Email)
-	}
-
-	if authorPerson.Name != TEST_USER_NAME {
-		t.Errorf("got wrong name %s", authorPerson.Name)
 	}
 
 	if correctTime.Format(time.RFC1123Z) != authorTime.Format(time.RFC1123Z) {
@@ -58,9 +54,6 @@ func TestToGitTime(t *testing.T) {
 
 	fmtTime := toGitTime(ti)
 
-	if fmtTime != TIME_FORMATTED {
-		t.Errorf("got wrong time expected: %s got :%s", TIME_FORMATTED, fmtTime)
-
-	}
+	testutils.AssertString(t, "time", TIME_FORMATTED, fmtTime)
 
 }

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/uragirii/got/internals/git/sha"
+	testutils "github.com/uragirii/got/internals/test_utils"
 )
 
 var TEST_BYTE_SLICE = []byte{0x23, 0x22, 0x24, 0xfe, 0xef, 0xab, 0xbc, 0xcd, 0xde, 0xef, 0xff, 0x23, 0x22, 0x24, 0xfe, 0xef, 0xab, 0xbc, 0xcd, 0xde, 0xef, 0xff}
@@ -24,9 +25,7 @@ func TestFromByteSlice(t *testing.T) {
 		}
 	}
 
-	if sha.String() != TEST_SHA_STR {
-		t.Fatalf("MarshallToStr returned incorrect string, expected %s got %s", TEST_SHA_STR, sha)
-	}
+	testutils.AssertString(t, "string", TEST_SHA_STR, sha.String())
 }
 
 func TestFromString(t *testing.T) {
@@ -42,9 +41,7 @@ func TestFromString(t *testing.T) {
 		}
 	}
 
-	if sha.String() != TEST_SHA_STR {
-		t.Fatalf("MarshallToStr returned incorrect string, expected %s got %s", TEST_SHA_STR, sha)
-	}
+	testutils.AssertString(t, "string", TEST_SHA_STR, sha.String())
 }
 
 func TestEq(t *testing.T) {

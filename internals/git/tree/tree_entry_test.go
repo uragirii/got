@@ -6,6 +6,7 @@ import (
 
 	"github.com/uragirii/got/internals/git/sha"
 	"github.com/uragirii/got/internals/git/tree"
+	testutils "github.com/uragirii/got/internals/test_utils"
 )
 
 /*
@@ -107,12 +108,8 @@ func TestFromEnteries(t *testing.T) {
 			t.Errorf("expected error to be nil but got %s", err)
 		}
 
-		if tree.String() != TREE_ENTERIES_STR {
-			t.Errorf("expected string to be `%s` but got `%s`", TREE_ENTERIES_STR, tree.String())
-		}
-		if tree.Raw() != string(TREE_ENTERIES_RAW) {
-			t.Errorf("expected raw to be `% x` but got `% x`", TREE_ENTERIES_RAW, tree.String())
-		}
+		testutils.AssertString(t, "string", TREE_ENTERIES_STR, tree.String())
+		testutils.AssertString(t, "raw", string(TREE_ENTERIES_RAW), tree.String())
 
 		if !tree.GetSHA().Eq(objSha) {
 			t.Errorf("expected the sha to be %s but got %s", TREE_SHA_STR, tree.GetSHA())
@@ -124,9 +121,7 @@ func TestFromEnteries(t *testing.T) {
 
 		compressedBytes := buffer.Bytes()
 
-		if !bytes.Equal(compressedBytes, TREE_ENTERIES_COMPRESSED_DATA) {
-			t.Errorf("expected the raw to be \n% x\n\n but got \n% x", TREE_ENTERIES_COMPRESSED_DATA, compressedBytes)
-		}
+		testutils.AssertBytes(t, "raw bytes", TREE_ENTERIES_COMPRESSED_DATA, compressedBytes)
 
 	})
 }
