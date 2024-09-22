@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/uragirii/got/internals"
+	"github.com/uragirii/got/internals/git/config"
 	"github.com/uragirii/got/internals/git/head"
 	"github.com/uragirii/got/internals/git/index"
 	"github.com/uragirii/got/internals/git/object"
@@ -26,8 +27,8 @@ type Commit struct {
 	sha       *sha.SHA
 	message   string
 
-	author   person
-	commiter person
+	author   config.User
+	commiter config.User
 
 	authorTime time.Time
 	commitTime time.Time
@@ -81,7 +82,7 @@ func FromSHA(SHA *sha.SHA, gitFsys fs.FS) (*Commit, error) {
 	tree, err := tree.FromSHA(treeSha, gitFsys)
 
 	author, authorTime := parseAuthorLine(authorLine)
-	commiter, commiterTime := parseAuthorLine(commiterLine)
+	commiter, commiterTime := parseCommitterLine(commiterLine)
 
 	if err != nil {
 		return nil, err
@@ -113,10 +114,10 @@ func (commit Commit) String() string {
 
 	sb.WriteString(fmt.Sprintf("tree %s\n", commit.Tree.SHA))
 	sb.WriteString(fmt.Sprintf("parent %s\n", commit.parentSHA))
-	sb.WriteString("author Apoorv Kansal <apoorvkansalak@gmail.com> ")
+	sb.WriteString(fmt.Sprintf("author %s ", commit.author.String()))
 	sb.WriteString(toGitTime(commit.authorTime))
 	sb.WriteRune('\n')
-	sb.WriteString("committer Apoorv Kansal <apoorvkansalak@gmail.com> ")
+	sb.WriteString(fmt.Sprintf("committer %s ", commit.commiter.String()))
 	sb.WriteString(toGitTime(commit.commitTime))
 	sb.WriteRune('\n')
 	sb.WriteString("\n")
@@ -241,18 +242,19 @@ func New(gitFs fs.FS, message string) (*Commit, error) {
 	}
 
 	// TODO: Read these from global config
-	p := person{
-		name:  "Apoorv Kansal",
-		email: "apoorvkansalak@gmail.com",
+	c, err := config.FromFile()
+
+	if err != nil {
+		return nil, err
 	}
 
 	commit := &Commit{
 		parentSHA:  head.SHA,
 		message:    message,
 		Tree:       tree,
-		author:     p,
+		author:     c.User,
 		authorTime: time.Now(),
-		commiter:   p,
+		commiter:   c.User,
 		commitTime: time.Now(),
 	}
 

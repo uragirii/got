@@ -6,12 +6,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
-)
 
-type person struct {
-	name  string
-	email string
-}
+	"github.com/uragirii/got/internals/git/config"
+)
 
 func parseOffset(offset string) int {
 	sign := 1
@@ -43,7 +40,7 @@ func parseTime(timeLine string) time.Time {
 
 }
 
-func parseAuthorLine(authorLine string) (person, time.Time) {
+func parseAuthorLine(authorLine string) (config.User, time.Time) {
 	// remove "author" from start
 	authorLine = authorLine[7:]
 
@@ -56,12 +53,13 @@ func parseAuthorLine(authorLine string) (person, time.Time) {
 
 	authorTime := parseTime(authorLine[emailEndIdx+2:])
 
-	return person{
-		name, email,
+	return config.User{
+		Name:  name,
+		Email: email,
 	}, authorTime
 }
 
-func parseCommitterLine(commiterLine string) (person, time.Time) {
+func parseCommitterLine(commiterLine string) (config.User, time.Time) {
 	// remove "committer" from start
 	commiterLine = commiterLine[10:]
 
@@ -74,8 +72,8 @@ func parseCommitterLine(commiterLine string) (person, time.Time) {
 
 	authorTime := parseTime(commiterLine[emailEndIdx+2:])
 
-	return person{
-		name, email,
+	return config.User{
+		Name: name, Email: email,
 	}, authorTime
 }
 

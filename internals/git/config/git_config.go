@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path"
@@ -10,6 +11,10 @@ import (
 type User struct {
 	Name  string
 	Email string
+}
+
+func (user User) String() string {
+	return fmt.Sprintf("%s <%s>", user.Name, user.Email)
 }
 
 type Config struct {
