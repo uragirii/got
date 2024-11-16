@@ -109,7 +109,7 @@ func TestFromEnteries(t *testing.T) {
 		}
 
 		testutils.AssertString(t, "string", TREE_ENTERIES_STR, tree.String())
-		testutils.AssertString(t, "raw", string(TREE_ENTERIES_RAW), tree.String())
+		testutils.AssertString(t, "raw", string(TREE_ENTERIES_RAW), tree.Raw())
 
 		if !tree.GetSHA().Eq(objSha) {
 			t.Errorf("expected the sha to be %s but got %s", TREE_SHA_STR, tree.GetSHA())
