@@ -44,6 +44,10 @@ func FromSHA(SHA *sha.SHA, gitFsys fs.FS) (*Commit, error) {
 		return nil, err
 	}
 
+	return FromObj(objContents, gitFsys)
+}
+
+func FromObj(objContents object.ObjectContents, gitFsys fs.FS) (*Commit, error) {
 	if objContents.ObjType != object.CommitObj {
 		return nil, ErrInvalidCommit
 	}
@@ -88,16 +92,23 @@ func FromSHA(SHA *sha.SHA, gitFsys fs.FS) (*Commit, error) {
 		return nil, err
 	}
 
-	return &Commit{
+	c := &Commit{
 		Tree:       tree,
-		sha:        SHA,
 		message:    commitMsg,
 		parentSHA:  parentSha,
 		author:     author,
 		authorTime: authorTime,
 		commiter:   commiter,
 		commitTime: commiterTime,
-	}, nil
+	}
+
+	err = c.CalculateSha()
+
+	if err != nil {
+		return nil, err
+	}
+
+	return c, nil
 
 }
 

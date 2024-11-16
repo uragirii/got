@@ -77,14 +77,18 @@ func FromSHA(sha *sha.SHA, fsys fs.FS) (ObjectContents, error) {
 
 	defer objFile.Close()
 
-	decompressedContents, err := decompress(objFile)
+	return FromData(objFile)
+
+}
+
+func FromData(r io.Reader) (ObjectContents, error) {
+	decompressedContents, err := decompress(r)
 
 	if err != nil {
 		return ObjectContents{}, err
 	}
 
 	return getContents(decompressedContents)
-
 }
 
 func getContents(decompressedContents *[]byte) (ObjectContents, error) {
