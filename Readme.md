@@ -1,6 +1,6 @@
 # got
 
-got is a lightweight Git client written in Go. This project serves as a learning experience for me to explore the Go programming language. While not a comprehensive Git replacement, it implements some commonly used commands and flags.
+got is a lightweight Git client written in Go. This project serves as a learning experience for me to explore the Go programming language. While not a comprehensive Git replacement, it implements some commonly used commands and flags
 
 **Goals**
 
