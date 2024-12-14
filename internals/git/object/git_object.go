@@ -46,7 +46,7 @@ type ObjectContents struct {
 	Contents *[]byte
 }
 
-func decompress(reader io.Reader) (*[]byte, error) {
+func Decompress(reader io.Reader) (*[]byte, error) {
 	reader, err := zlib.NewReader(reader)
 
 	if err != nil {
@@ -82,7 +82,7 @@ func FromSHA(sha *sha.SHA, fsys fs.FS) (ObjectContents, error) {
 }
 
 func FromData(r io.Reader) (ObjectContents, error) {
-	decompressedContents, err := decompress(r)
+	decompressedContents, err := Decompress(r)
 
 	if err != nil {
 		return ObjectContents{}, err
