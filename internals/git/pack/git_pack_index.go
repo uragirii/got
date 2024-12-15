@@ -8,12 +8,13 @@ import (
 )
 
 type idxItem struct {
-	offset         int64
-	compressedSize int64
+	Offset         int64
+	CompressedSize int64
 }
 
 type PackIndex struct {
-	offsetMap map[string]idxItem
+	offsetMap   map[string]idxItem
+	offsetOrder []*sha.SHA
 }
 
 func (idx PackIndex) GetObjOffset(sha *sha.SHA) (idxItem, bool) {
@@ -104,14 +105,15 @@ func FromIdxFile(fsys fs.FS, path string) (*PackIndex, error) {
 		}
 
 		offsetMap[shaList[idx].String()] = idxItem{
-			offset:         offset,
-			compressedSize: compressedSize,
+			Offset:         offset,
+			CompressedSize: compressedSize,
 		}
 		// fmt.Printf("%s %d\n", shaList[idx].String(), offset)
 	}
 
 	return &PackIndex{
-		offsetMap: offsetMap,
+		offsetMap:   offsetMap,
+		offsetOrder: shaList,
 	}, nil
 
 }
