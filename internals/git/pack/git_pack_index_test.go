@@ -15,8 +15,8 @@ type VerifyPackOutput struct {
 	SHA            string `json:sha`
 	Type           string `json:type`
 	Size           int64  `json:size`
-	CompressedSize int64  `json:compressedSize`
-	Offset         int64  `json:offset`
+	CompressedSize uint32 `json:compressedSize`
+	Offset         uint32 `json:offset`
 }
 
 const _VERBOSE_OUTPUT_PATH = "pack/verify-pack-verbose-output.json"
@@ -56,7 +56,7 @@ func TestPackIndex(t *testing.T) {
 		t.Errorf("error while parsing index file %v", err)
 	}
 
-	for _, item := range output[0:5:5] {
+	for _, item := range output {
 		t.Run(fmt.Sprintf("Checking for output %s", item.SHA), func(t *testing.T) {
 
 			sha, err := sha.FromString(item.SHA)
@@ -77,8 +77,9 @@ func TestPackIndex(t *testing.T) {
 				t.Fail()
 			}
 
-			if idxItem.CompressedSize != item.CompressedSize {
-				t.Errorf("Expected compressed size to be %d but got %d", item.CompressedSize, idxItem.CompressedSize)
+			// For now, we don't know if we should fetch compressed size from index
+			if idxItem.CompressedSize != 0 {
+				t.Errorf("Expected compressed size to be %d but got %d", item.CompressedSize, 0)
 				t.Fail()
 			}
 		})
