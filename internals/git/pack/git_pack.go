@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"os"
+	"io"
 	"slices"
 
 	"github.com/uragirii/got/internals/git/object"
@@ -22,43 +22,63 @@ const (
 	_REF_DELTA packObjType = 0b111
 )
 
+func (objType packObjType) String() string {
+	switch objType {
+	case _BLOB:
+		return "blob"
+	case _COMMIT:
+		return "commit"
+	case _TREE:
+		return "tree"
+	case _TAG:
+		return "tag"
+	case _OFS_DELTA:
+		return "ofs"
+	case _REF_DELTA:
+		return "ref"
+	}
+	return "na"
+}
+
 // Pack would be used to get an object that is no longer loose.
 // Ideally the API would be pack.GetObject(sha.SHA)(object, error)
 // For now im doing one pack at a time, but i'd want to read all pack indexes and then
 // store the map just in case
 
 type Pack struct {
-	idx      *PackIndex
-	packFile *os.File
+	idx        *PackIndex
+	fileReader bytes.Reader
 }
 
 var ErrCantReadPackFile = errors.New("cannot read pack file")
 var ErrObjNotFound = errors.New("object not found in pack file")
 var ErrOFSDeltaNotImplemented = errors.New("OFS_DELTA not implemented")
 
-func readOneByte(file *os.File, offset int64) byte {
-	one := make([]byte, 1)
-	n, err := file.ReadAt(one, offset)
+func readOneByte(r bytes.Reader, offset uint32) byte {
+	var b [1]byte
 
-	if err != nil || n != 1 {
-		panic(ErrCantReadPackFile)
+	_, err := r.ReadAt(b[:], int64(offset))
+
+	if err != nil {
+		fmt.Printf("non-reachable code, readOneByte:git_pack.go %v", err)
+		panic(err)
 	}
 
-	return one[0]
+	return b[0]
 }
 
 func shouldReadMore(b byte) bool {
 	// check is MSB is set, if set we need to read more
-	return b > 0b1000_0000
+	return (b & 0b1000_0000) == 0b1000_0000
 }
 
 func getObjType(b byte) packObjType {
 	return packObjType((b & 0b0111_0000) >> 4)
 }
 
-func getObjTypeAndSize(file *os.File, offset int64) (packObjType, *[]byte, error) {
+func getObjTypeAndSize(r bytes.Reader, offset uint32) (packObjType, *[]byte, error) {
 
-	firstByte := readOneByte(file, offset)
+	firstByte := readOneByte(r, offset)
 	offset++
 
 	objType := getObjType(firstByte)
@@ -67,10 +87,11 @@ func getObjTypeAndSize(file *os.File, offset int64) (packObjType, *[]byte, error
 
 	firstByte = firstByte & 0b0000_1111
 
+	// this is expanded size
 	sizeBytes := []byte{}
 
 	for ; shouldReadMore(b); offset++ {
-		b = readOneByte(file, offset)
+		b = readOneByte(r, offset)
 
 		sizeBytes = append(sizeBytes, b&0b0111_1111)
 	}
@@ -86,7 +107,17 @@ func getObjTypeAndSize(file *os.File, offset int64) (packObjType, *[]byte, error
 
 	data := make([]byte, size)
 
-	file.ReadAt(data, offset)
+	_, err := r.Seek(int64(offset), io.SeekStart)
+
+	if err != nil {
+		return _BLOB, nil, err
+	}
+
+	_, err = r.Read(data)
+
+	if err != nil {
+		return _BLOB, nil, err
+	}
 
 	return objType, &data, nil
 }
@@ -99,9 +130,9 @@ func (pack Pack) GetObj(objSha *sha.SHA) (object.ObjectContents, error) {
 		return object.ObjectContents{}, ErrObjNotFound
 	}
 
-	offset := item.offset
+	offset := item.Offset
 
-	objType, data, err := getObjTypeAndSize(pack.packFile, offset)
+	objType, data, err := getObjTypeAndSize(pack.fileReader, offset)
 
 	if err != nil {
 		return object.ObjectContents{}, err
@@ -109,13 +140,9 @@ func (pack Pack) GetObj(objSha *sha.SHA) (object.ObjectContents, error) {
 
 	switch objType {
 	case _REF_DELTA:
-		baseObjShaBytes := (*data)[:sha.BYTES_LEN]
-		baseObjSha, err := sha.FromByteSlice(&baseObjShaBytes)
-		if err != nil {
-			panic(err)
-		}
-		fmt.Printf("% x\n", *data)
-		fmt.Println(baseObjSha.String())
+		fmt.Println("REF DELTA CASE")
+
+		return object.ObjectContents{}, ErrOFSDeltaNotImplemented
 
 	case _OFS_DELTA:
 		fmt.Println("OFS DELTA CASE")
@@ -140,7 +167,7 @@ func (pack Pack) GetObj(objSha *sha.SHA) (object.ObjectContents, error) {
 			return object.ObjectContents{}, err
 		}
 		return object.ObjectContents{
-			ObjType:  object.CommitObj,
+			ObjType:  object.BlobObj,
 			Contents: data,
 		}, nil
 	case _TREE:
@@ -150,7 +177,7 @@ func (pack Pack) GetObj(objSha *sha.SHA) (object.ObjectContents, error) {
 			return object.ObjectContents{}, err
 		}
 		return object.ObjectContents{
-			ObjType:  object.CommitObj,
+			ObjType:  object.TreeObj,
 			Contents: data,
 		}, nil
 	}
@@ -159,9 +186,9 @@ func (pack Pack) GetObj(objSha *sha.SHA) (object.ObjectContents, error) {
 
 }
 
-func ParsePackFile(file *os.File, idx *PackIndex) *Pack {
+func ParsePackFile(r bytes.Reader, idx *PackIndex) *Pack {
 	return &Pack{
-		idx:      idx,
-		packFile: file,
+		idx:        idx,
+		fileReader: r,
 	}
 }

@@ -1,37 +1,80 @@
 package pack_test
 
 import (
+	"bytes"
 	"errors"
-	"os"
+	"fmt"
+	"io"
 	"testing"
 
 	"github.com/uragirii/got/internals/git/pack"
 	"github.com/uragirii/got/internals/git/sha"
+	"github.com/uragirii/got/testdata"
 )
 
-func TestFromIdxFile(t *testing.T) {
-	fsys := os.DirFS("/Users/apoorv.kansal/Codes/golang/got/testdata/pack")
+const _PACK_FILE_PATH = "pack/pack-9fd2cca459eacd57246d2ba2349866deea5ed542.pack"
 
-	idx, _ := pack.FromIdxFile(fsys, "pack-9fd2cca459eacd57246d2ba2349866deea5ed542.idx")
+func getPackFileReader(t *testing.T) (*bytes.Reader, error) {
+	t.Helper()
 
-	file, _ := os.Open("/Users/apoorv.kansal/Codes/golang/got/testdata/pack/pack-9fd2cca459eacd57246d2ba2349866deea5ed542.pack")
+	file, _ := testdata.TestData.Open(_PACK_FILE_PATH)
 
-	p := pack.ParsePackFile(file, idx)
+	b, err := io.ReadAll(file)
 
-	s, _ := sha.FromString("d48bc2b17ec2a27d73345d8c5a36dcc08f3667e7")
-
-	_, err := p.GetObj(s)
-
-	if !errors.Is(err, pack.ErrOFSDeltaNotImplemented) {
-		t.Fatalf("Expected OFS delta to be not implemented")
+	if err != nil {
+		return nil, err
 	}
 
-	// if err != nil {
-	// 	t.Fatalf("failed with error %v", err)
-	// }
+	r := bytes.NewReader(b)
 
-	// if obj.ObjType != object.CommitObj {
-	// 	t.Errorf("Expected object to be commit but got %s", obj.ObjType)
-	// }
+	return r, nil
 
+}
+
+func TestFromIdxFile(t *testing.T) {
+
+	idx, err := pack.FromIdxFile(testdata.TestData, _IDX_FILE_PATH)
+
+	if err != nil {
+		t.Fatalf("error while parsing index file %v", err)
+	}
+
+	packReader, err := getPackFileReader(t)
+
+	if err != nil {
+		t.Fatalf("error while reading pack file %v", err)
+	}
+
+	output, err := loadVerboseOutput(t)
+
+	if err != nil {
+		t.Fatalf("error while reading output file %v", err)
+	}
+
+	p := pack.ParsePackFile(*packReader, idx)
+
+	for _, item := range output[0:200:200] {
+		t.Run(fmt.Sprintf("Testing for %s", item.SHA), func(t *testing.T) {
+			sha, err := sha.FromString(item.SHA)
+
+			if err != nil {
+				t.Errorf("error while parsing sha %v", err)
+			}
+
+			obj, err := p.GetObj(sha)
+
+			// TODO: check for OFS Delta
+			if err != nil {
+				if errors.Is(err, pack.ErrOFSDeltaNotImplemented) {
+					t.Skip()
+				} else {
+					t.Errorf("expected not an error but got %v", err)
+				}
+			}
+
+			if obj.ObjType != item.Type {
+				t.Errorf("expected type to be %s but got %s, Offset: %d", item.Type, obj.ObjType, item.Offset)
+			}
+		})
+	}
 }

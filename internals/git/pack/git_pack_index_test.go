@@ -6,17 +6,18 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/uragirii/got/internals/git/object"
 	"github.com/uragirii/got/internals/git/pack"
 	"github.com/uragirii/got/internals/git/sha"
 	"github.com/uragirii/got/testdata"
 )
 
 type VerifyPackOutput struct {
-	SHA            string `json:sha`
-	Type           string `json:type`
-	Size           int64  `json:size`
-	CompressedSize uint32 `json:compressedSize`
-	Offset         uint32 `json:offset`
+	SHA            string            `json:sha`
+	Type           object.ObjectType `json:type`
+	Size           int64             `json:size`
+	CompressedSize uint32            `json:compressedSize`
+	Offset         uint32            `json:offset`
 }
 
 const _VERBOSE_OUTPUT_PATH = "pack/verify-pack-verbose-output.json"
