@@ -22,6 +22,11 @@ const (
 	_REF_DELTA packObjType = 0b111
 )
 
+// How much extra space to allocate for uncompressed data
+// DEFALTE has ration of 2:1 - 5:1 but for binary data
+// its close to 3.
+const _CompressionFactor = 3
+
 func (objType packObjType) String() string {
 	switch objType {
 	case _BLOB:
@@ -103,9 +108,24 @@ func getObjTypeAndSize(r bytes.Reader, offset uint32) (packObjType, *[]byte, err
 		size = (size << 7) + int(b)
 	}
 
+	// this is UNCOMPRESSED size NOT compressed size
+	// more below
 	size = (size << 4) + int(firstByte)
 
-	data := make([]byte, size)
+	/**
+		As Mr. Git doesn't tell us the size of compressed data in pack files,
+		we have 3 options
+		1. Read byte by byte and decompress data, til EOF
+		2. Allocate extra memory so we get more data.
+	  3. Get next offset from Index file and then allocate diff many bytes only
+
+		I chose 2nd option, why
+		- Doing 1st option in golang would require slicing the huge data and then making reader. i find that approach quite "troublesome"
+		- Ideally id get offset from index, and i'll do it, but iirc index files are NOT mandatory to decode pack files so i need to be compatible with that
+
+		the test suite tests for these cases. was PITA to debug
+	*/
+	data := make([]byte, size*_CompressionFactor)
 
 	_, err := r.Seek(int64(offset), io.SeekStart)
 

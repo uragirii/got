@@ -73,7 +73,7 @@ func TestFromIdxFile(t *testing.T) {
 			}
 
 			if obj.ObjType != item.Type {
-				t.Errorf("expected type to be %s but got %s, Offset: %d", item.Type, obj.ObjType, item.Offset)
+				t.Errorf("expected type to be %s but got %s", item.Type, obj.ObjType)
 			}
 		})
 	}
