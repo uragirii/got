@@ -142,6 +142,71 @@ func getObjTypeAndSize(r bytes.Reader, offset uint32) (packObjType, *[]byte, err
 	return objType, &data, nil
 }
 
+func (pack Pack) getOfsDeltaObj(r bytes.Reader, offset uint32) {
+	offsetBytes := []byte{}
+
+	currPos, _ := r.Seek(0, io.SeekCurrent)
+
+	fmt.Println("Current", currPos)
+
+	r.Seek(int64(offset), io.SeekStart)
+
+	currPos, _ = r.Seek(0, io.SeekCurrent)
+
+	fmt.Println("Current", currPos)
+
+	b, _ := r.ReadByte()
+
+	for shouldReadMore(b) {
+		b, _ = r.ReadByte()
+
+		offsetBytes = append(offsetBytes, b&0b0111_1111)
+	}
+
+	currPos, _ = r.Seek(0, io.SeekCurrent)
+
+	fmt.Println("Current", currPos)
+
+	slices.Reverse(offsetBytes)
+
+	baseObjOffsetDiff := 0
+	correction := 0
+
+	for _, b := range offsetBytes {
+
+		// n bytes with MSB set in all but the last one.
+		// The offset is then the number constructed by
+		// concatenating the lower 7 bit of each byte, and
+		// for n >= 2 adding 2^7 + 2^14 + ... + 2^(7*(n-1))
+		// to the result
+
+		correction = (correction << 7) + 0x80
+
+		baseObjOffsetDiff = (baseObjOffsetDiff << 7) + int(b)
+	}
+
+	baseObjOffsetDiff += correction
+
+	baseObj := offset - uint32(baseObjOffsetDiff)
+
+	fmt.Println("Base ", baseObj, correction, baseObjOffsetDiff)
+
+	currPos, _ = r.Seek(0, io.SeekCurrent)
+
+	fmt.Println("Current", currPos, len(offsetBytes))
+
+	instructions, err := object.Decompress(&r)
+
+	currPos, _ = r.Seek(0, io.SeekCurrent)
+
+	fmt.Println("Current", currPos, err)
+
+	for _, b := range *instructions {
+		fmt.Printf("%08b %q 0x%x\n", b, b, b)
+	}
+
+}
+
 func (pack Pack) GetObj(objSha *sha.SHA) (object.ObjectContents, error) {
 
 	item, ok := pack.idx.GetObjOffset(objSha)
@@ -166,6 +231,7 @@ func (pack Pack) GetObj(objSha *sha.SHA) (object.ObjectContents, error) {
 
 	case _OFS_DELTA:
 		fmt.Println("OFS DELTA CASE")
+		pack.getOfsDeltaObj(pack.fileReader, offset+2)
 
 		return object.ObjectContents{}, ErrOFSDeltaNotImplemented
 
