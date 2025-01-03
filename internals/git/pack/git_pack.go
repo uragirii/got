@@ -145,17 +145,9 @@ func getObjTypeAndSize(r bytes.Reader, offset uint32) (packObjType, *[]byte, err
 func (pack Pack) getOfsDeltaObj(r bytes.Reader, offset uint32) {
 	offsetBytes := []byte{}
 
-	currPos, _ := r.Seek(0, io.SeekCurrent)
-
-	fmt.Println("Current", currPos)
-
 	r.Seek(int64(offset), io.SeekStart)
 
-	currPos, _ = r.Seek(0, io.SeekCurrent)
-
-	fmt.Println("Current", currPos)
-
-	b, _ := r.ReadByte()
+	var b byte = 0x80
 
 	for shouldReadMore(b) {
 		b, _ = r.ReadByte()
@@ -163,16 +155,10 @@ func (pack Pack) getOfsDeltaObj(r bytes.Reader, offset uint32) {
 		offsetBytes = append(offsetBytes, b&0b0111_1111)
 	}
 
-	currPos, _ = r.Seek(0, io.SeekCurrent)
-
-	fmt.Println("Current", currPos)
-
-	slices.Reverse(offsetBytes)
-
 	baseObjOffsetDiff := 0
 	correction := 0
 
-	for _, b := range offsetBytes {
+	for idx, b := range offsetBytes {
 
 		// n bytes with MSB set in all but the last one.
 		// The offset is then the number constructed by
@@ -180,31 +166,103 @@ func (pack Pack) getOfsDeltaObj(r bytes.Reader, offset uint32) {
 		// for n >= 2 adding 2^7 + 2^14 + ... + 2^(7*(n-1))
 		// to the result
 
-		correction = (correction << 7) + 0x80
+		if idx > 0 {
+			correction = (correction << 7) + 0x80
+		}
 
 		baseObjOffsetDiff = (baseObjOffsetDiff << 7) + int(b)
 	}
 
 	baseObjOffsetDiff += correction
 
-	baseObj := offset - uint32(baseObjOffsetDiff)
-
-	fmt.Println("Base ", baseObj, correction, baseObjOffsetDiff)
-
-	currPos, _ = r.Seek(0, io.SeekCurrent)
-
-	fmt.Println("Current", currPos, len(offsetBytes))
+	// baseObjOffset := offset - uint32(baseObjOffsetDiff)
 
 	instructions, err := object.Decompress(&r)
 
-	currPos, _ = r.Seek(0, io.SeekCurrent)
-
-	fmt.Println("Current", currPos, err)
-
-	for _, b := range *instructions {
-		fmt.Printf("%08b %q 0x%x\n", b, b, b)
+	if err != nil {
+		panic(err)
 	}
 
+	var objData []byte
+
+	// for _, ins := range *instructions {
+	// 	fmt.Printf("%08b\n", ins)
+	// }
+
+	for i := 0; i < len((*instructions)); i++ {
+		instruction := (*instructions)[i]
+
+		fmt.Printf("Instruction %08b\n", instruction)
+
+		if (instruction & 0b1000_0000) != 0b1000_0000 {
+			// 0xxxxxxx means data to copy
+
+			dataToCopy := (*instructions)[i+1 : i+int(instruction)]
+
+			fmt.Printf("Copying data \"%s\"\n", dataToCopy)
+
+			i += int(instruction)
+			objData = append(objData, dataToCopy...)
+
+			continue
+		}
+
+		offsetMask := instruction & 0b1111
+
+		var offsetSlice [4]byte
+
+		i++
+		for idx := range 4 {
+
+			hasOffset := offsetMask & 0b1
+
+			if hasOffset == 1 {
+				offsetSlice[4-idx-1] = (*instructions)[i]
+				i++
+			}
+
+			offsetMask = offsetMask >> 1
+		}
+
+		fmt.Printf("%08b\n", offsetSlice)
+
+		off := 0
+
+		for _, o := range offsetSlice {
+			off = (off << 8) + int(o)
+		}
+
+		fmt.Println("Offset", off)
+
+		sizeMask := (instruction & 0b0111_0000) >> 4
+
+		var sizeSlice [3]byte
+
+		i++
+		for idx := range 3 {
+			hasSize := sizeMask & 0b1
+
+			if hasSize == 1 {
+				sizeSlice[3-idx-1] = (*instructions)[idx]
+				i++
+			}
+
+			sizeMask = sizeMask >> 1
+		}
+
+		fmt.Println(sizeSlice)
+
+		size := 0
+
+		for _, o := range sizeSlice {
+			size = (size << 8) + int(o)
+		}
+
+		fmt.Println("Size", size)
+
+	}
+
+	fmt.Println(string(objData))
 }
 
 func (pack Pack) GetObj(objSha *sha.SHA) (object.ObjectContents, error) {
