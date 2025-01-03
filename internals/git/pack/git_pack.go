@@ -22,11 +22,6 @@ const (
 	_REF_DELTA packObjType = 0b111
 )
 
-// How much extra space to allocate for uncompressed data
-// DEFALTE has ration of 2:1 - 5:1 but for binary data
-// its close to 3.
-const _CompressionFactor = 3
-
 func (objType packObjType) String() string {
 	switch objType {
 	case _BLOB:
@@ -45,6 +40,19 @@ func (objType packObjType) String() string {
 	return "na"
 }
 
+func (objType packObjType) ToGitObject() object.ObjectType {
+	switch objType {
+	case _BLOB:
+		return object.BlobObj
+	case _COMMIT:
+		return object.CommitObj
+	case _TREE:
+		return object.TreeObj
+	default:
+		panic(fmt.Sprintf("ToGitObject can be called only on blob, commit or tree but called on %s", objType.String()))
+	}
+}
+
 // Pack would be used to get an object that is no longer loose.
 // Ideally the API would be pack.GetObject(sha.SHA)(object, error)
 // For now im doing one pack at a time, but i'd want to read all pack indexes and then
@@ -59,7 +67,7 @@ var ErrCantReadPackFile = errors.New("cannot read pack file")
 var ErrObjNotFound = errors.New("object not found in pack file")
 var ErrOFSDeltaNotImplemented = errors.New("OFS_DELTA not implemented")
 
-func readOneByte(r bytes.Reader, offset uint32) byte {
+func readOneByte(r *bytes.Reader, offset int64) byte {
 	var b [1]byte
 
 	_, err := r.ReadAt(b[:], int64(offset))
@@ -81,7 +89,12 @@ func getObjType(b byte) packObjType {
 	return packObjType((b & 0b0111_0000) >> 4)
 }
 
-func getObjTypeAndSize(r bytes.Reader, offset uint32) (packObjType, *[]byte, error) {
+/**
+* Pass the reader seeked to the correct offset
+ */
+func parseObjTypeAndSize(r *bytes.Reader) (packObjType, int, error) {
+
+	offset, _ := r.Seek(0, io.SeekCurrent)
 
 	firstByte := readOneByte(r, offset)
 	offset++
@@ -112,34 +125,9 @@ func getObjTypeAndSize(r bytes.Reader, offset uint32) (packObjType, *[]byte, err
 	// more below
 	size = (size << 4) + int(firstByte)
 
-	/**
-		As Mr. Git doesn't tell us the size of compressed data in pack files,
-		we have 3 options
-		1. Read byte by byte and decompress data, til EOF
-		2. Allocate extra memory so we get more data.
-	  3. Get next offset from Index file and then allocate diff many bytes only
+	r.Seek(int64(offset), io.SeekStart)
 
-		I chose 2nd option, why
-		- Doing 1st option in golang would require slicing the huge data and then making reader. i find that approach quite "troublesome"
-		- Ideally id get offset from index, and i'll do it, but iirc index files are NOT mandatory to decode pack files so i need to be compatible with that
-
-		the test suite tests for these cases. was PITA to debug
-	*/
-	data := make([]byte, size*_CompressionFactor)
-
-	_, err := r.Seek(int64(offset), io.SeekStart)
-
-	if err != nil {
-		return _BLOB, nil, err
-	}
-
-	_, err = r.Read(data)
-
-	if err != nil {
-		return _BLOB, nil, err
-	}
-
-	return objType, &data, nil
+	return objType, size, nil
 }
 
 func (pack Pack) getOfsDeltaObj(r bytes.Reader, offset uint32) {
@@ -275,58 +263,41 @@ func (pack Pack) GetObj(objSha *sha.SHA) (object.ObjectContents, error) {
 
 	offset := item.Offset
 
-	objType, data, err := getObjTypeAndSize(pack.fileReader, offset)
+	pack.fileReader.Seek(int64(offset), io.SeekStart)
+
+	objType, size, err := parseObjTypeAndSize(&pack.fileReader)
 
 	if err != nil {
 		return object.ObjectContents{}, err
 	}
 
-	switch objType {
-	case _REF_DELTA:
+	if objType == _REF_DELTA {
 		fmt.Println("REF DELTA CASE")
 
 		return object.ObjectContents{}, ErrOFSDeltaNotImplemented
-
-	case _OFS_DELTA:
-		fmt.Println("OFS DELTA CASE")
-		pack.getOfsDeltaObj(pack.fileReader, offset+2)
-
-		return object.ObjectContents{}, ErrOFSDeltaNotImplemented
-
-	case _COMMIT:
-		data, err = object.Decompress(bytes.NewReader(*data))
-
-		if err != nil {
-			return object.ObjectContents{}, err
-		}
-		return object.ObjectContents{
-			ObjType:  object.CommitObj,
-			Contents: data,
-		}, nil
-
-	case _BLOB:
-		data, err = object.Decompress(bytes.NewReader(*data))
-
-		if err != nil {
-			return object.ObjectContents{}, err
-		}
-		return object.ObjectContents{
-			ObjType:  object.BlobObj,
-			Contents: data,
-		}, nil
-	case _TREE:
-		data, err = object.Decompress(bytes.NewReader(*data))
-
-		if err != nil {
-			return object.ObjectContents{}, err
-		}
-		return object.ObjectContents{
-			ObjType:  object.TreeObj,
-			Contents: data,
-		}, nil
 	}
 
-	return object.ObjectContents{}, errors.New("not implemented")
+	if objType == _OFS_DELTA {
+		fmt.Println("OFS DELTA CASE")
+		// pack.getOfsDeltaObj(pack.fileReader, offset+2)
+
+		return object.ObjectContents{}, ErrOFSDeltaNotImplemented
+	}
+
+	data, err := object.Decompress(&pack.fileReader)
+
+	if err != nil {
+		return object.ObjectContents{}, err
+	}
+
+	if len(*data) != size {
+		return object.ObjectContents{}, fmt.Errorf("expected decompressed size to be %d but got %d", size, len(*data))
+	}
+
+	return object.ObjectContents{
+		Contents: data,
+		ObjType:  objType.ToGitObject(),
+	}, nil
 
 }
 
