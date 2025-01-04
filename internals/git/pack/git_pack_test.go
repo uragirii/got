@@ -2,7 +2,6 @@ package pack_test
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"testing"
@@ -63,17 +62,12 @@ func TestFromIdxFile(t *testing.T) {
 
 			obj, err := p.GetObj(sha)
 
-			// TODO: check for OFS Delta
 			if err != nil {
-				if errors.Is(err, pack.ErrOFSDeltaNotImplemented) {
-					t.Skip()
-				} else {
-					t.Errorf("expected not an error but got %v", err)
-				}
+				t.Errorf("expected not an error but got %v", err)
 			}
 
 			if obj.ObjType != item.Type {
-				t.Errorf("expected type to be %s but got %s", item.Type, obj.ObjType)
+				t.Errorf("expected len to be %s but got %s", item.Type, obj.ObjType)
 			}
 		})
 	}

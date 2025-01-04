@@ -65,7 +65,7 @@ type Pack struct {
 
 var ErrCantReadPackFile = errors.New("cannot read pack file")
 var ErrObjNotFound = errors.New("object not found in pack file")
-var ErrOFSDeltaNotImplemented = errors.New("OFS_DELTA not implemented")
+var ErrRefDeltaNotImplemented = errors.New("REF_DELTA not implemented")
 
 func readOneByte(r *bytes.Reader, offset int64) byte {
 	var b [1]byte
@@ -130,10 +130,8 @@ func parseObjTypeAndSize(r *bytes.Reader) (packObjType, int, error) {
 	return objType, size, nil
 }
 
-func (pack Pack) getOfsDeltaObj(r bytes.Reader, offset uint32) {
+func (pack Pack) parseOFSDeltaObj(r *bytes.Reader, ogOffset int64) (object.ObjectContents, error) {
 	offsetBytes := []byte{}
-
-	r.Seek(int64(offset), io.SeekStart)
 
 	var b byte = 0x80
 
@@ -163,33 +161,49 @@ func (pack Pack) getOfsDeltaObj(r bytes.Reader, offset uint32) {
 
 	baseObjOffsetDiff += correction
 
-	// baseObjOffset := offset - uint32(baseObjOffsetDiff)
+	baseObjOffset := ogOffset - int64(baseObjOffsetDiff)
 
-	instructions, err := object.Decompress(&r)
+	baseObjContents, err := pack.GetObjAt(baseObjOffset)
 
 	if err != nil {
-		panic(err)
+		return object.ObjectContents{}, err
+	}
+
+	baseObj := *baseObjContents.Contents
+
+	instructionsData, err := object.Decompress(r)
+
+	if err != nil {
+		return object.ObjectContents{}, err
 	}
 
 	var objData []byte
 
-	// for _, ins := range *instructions {
-	// 	fmt.Printf("%08b\n", ins)
-	// }
+	instructionsReader := bytes.NewReader(*instructionsData)
 
-	for i := 0; i < len((*instructions)); i++ {
-		instruction := (*instructions)[i]
+	instructionsReader.Seek(4, io.SeekStart)
 
-		fmt.Printf("Instruction %08b\n", instruction)
+	for {
+		instruction, err := instructionsReader.ReadByte()
+
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				return object.ObjectContents{
+					ObjType:  baseObjContents.ObjType,
+					Contents: &objData,
+				}, nil
+			}
+
+			return object.ObjectContents{}, err
+		}
 
 		if (instruction & 0b1000_0000) != 0b1000_0000 {
 			// 0xxxxxxx means data to copy
 
-			dataToCopy := (*instructions)[i+1 : i+int(instruction)]
+			dataToCopy := make([]byte, instruction)
 
-			fmt.Printf("Copying data \"%s\"\n", dataToCopy)
+			instructionsReader.Read(dataToCopy)
 
-			i += int(instruction)
 			objData = append(objData, dataToCopy...)
 
 			continue
@@ -199,20 +213,17 @@ func (pack Pack) getOfsDeltaObj(r bytes.Reader, offset uint32) {
 
 		var offsetSlice [4]byte
 
-		i++
+		// i++
 		for idx := range 4 {
 
 			hasOffset := offsetMask & 0b1
 
 			if hasOffset == 1 {
-				offsetSlice[4-idx-1] = (*instructions)[i]
-				i++
+				offsetSlice[4-idx-1], _ = instructionsReader.ReadByte()
 			}
 
 			offsetMask = offsetMask >> 1
 		}
-
-		fmt.Printf("%08b\n", offsetSlice)
 
 		off := 0
 
@@ -220,25 +231,19 @@ func (pack Pack) getOfsDeltaObj(r bytes.Reader, offset uint32) {
 			off = (off << 8) + int(o)
 		}
 
-		fmt.Println("Offset", off)
-
 		sizeMask := (instruction & 0b0111_0000) >> 4
 
 		var sizeSlice [3]byte
 
-		i++
 		for idx := range 3 {
 			hasSize := sizeMask & 0b1
 
 			if hasSize == 1 {
-				sizeSlice[3-idx-1] = (*instructions)[idx]
-				i++
+				sizeSlice[3-idx-1], _ = instructionsReader.ReadByte()
 			}
 
 			sizeMask = sizeMask >> 1
 		}
-
-		fmt.Println(sizeSlice)
 
 		size := 0
 
@@ -246,22 +251,18 @@ func (pack Pack) getOfsDeltaObj(r bytes.Reader, offset uint32) {
 			size = (size << 8) + int(o)
 		}
 
-		fmt.Println("Size", size)
+		if size == 0 {
+			// size zero is automatically converted to 0x10000
+			size = 0x10000
+		}
+
+		objData = append(objData, baseObj[off:off+size]...)
 
 	}
 
-	fmt.Println(string(objData))
 }
 
-func (pack Pack) GetObj(objSha *sha.SHA) (object.ObjectContents, error) {
-
-	item, ok := pack.idx.GetObjOffset(objSha)
-
-	if !ok {
-		return object.ObjectContents{}, ErrObjNotFound
-	}
-
-	offset := item.Offset
+func (pack Pack) GetObjAt(offset int64) (object.ObjectContents, error) {
 
 	pack.fileReader.Seek(int64(offset), io.SeekStart)
 
@@ -274,14 +275,11 @@ func (pack Pack) GetObj(objSha *sha.SHA) (object.ObjectContents, error) {
 	if objType == _REF_DELTA {
 		fmt.Println("REF DELTA CASE")
 
-		return object.ObjectContents{}, ErrOFSDeltaNotImplemented
+		return object.ObjectContents{}, ErrRefDeltaNotImplemented
 	}
 
 	if objType == _OFS_DELTA {
-		fmt.Println("OFS DELTA CASE")
-		// pack.getOfsDeltaObj(pack.fileReader, offset+2)
-
-		return object.ObjectContents{}, ErrOFSDeltaNotImplemented
+		return pack.parseOFSDeltaObj(&pack.fileReader, offset)
 	}
 
 	data, err := object.Decompress(&pack.fileReader)
@@ -298,6 +296,17 @@ func (pack Pack) GetObj(objSha *sha.SHA) (object.ObjectContents, error) {
 		Contents: data,
 		ObjType:  objType.ToGitObject(),
 	}, nil
+}
+
+func (pack Pack) GetObj(objSha *sha.SHA) (object.ObjectContents, error) {
+
+	item, ok := pack.idx.GetObjOffset(objSha)
+
+	if !ok {
+		return object.ObjectContents{}, ErrObjNotFound
+	}
+
+	return pack.GetObjAt(int64(item.Offset))
 
 }
 
