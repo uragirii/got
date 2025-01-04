@@ -66,19 +66,7 @@ type Pack struct {
 var ErrCantReadPackFile = errors.New("cannot read pack file")
 var ErrObjNotFound = errors.New("object not found in pack file")
 var ErrRefDeltaNotImplemented = errors.New("REF_DELTA not implemented")
-
-func readOneByte(r *bytes.Reader, offset int64) byte {
-	var b [1]byte
-
-	_, err := r.ReadAt(b[:], int64(offset))
-
-	if err != nil {
-		fmt.Printf("non-reachable code, readOneByte:git_pack.go %v", err)
-		panic(err)
-	}
-
-	return b[0]
-}
+var ErrBaseObjSizeMismatch = errors.New("base object size doesn't match")
 
 func shouldReadMore(b byte) bool {
 	// check is MSB is set, if set we need to read more
@@ -89,30 +77,16 @@ func getObjType(b byte) packObjType {
 	return packObjType((b & 0b0111_0000) >> 4)
 }
 
-/**
-* Pass the reader seeked to the correct offset
- */
-func parseObjTypeAndSize(r *bytes.Reader) (packObjType, int, error) {
-
-	offset, _ := r.Seek(0, io.SeekCurrent)
-
-	firstByte := readOneByte(r, offset)
-	offset++
-
-	objType := getObjType(firstByte)
-
-	b := firstByte
-
-	firstByte = firstByte & 0b0000_1111
-
-	// this is expanded size
+func parseSizeEncoding(r *bytes.Reader) int {
+	b := byte(0x80)
 	sizeBytes := []byte{}
 
-	for ; shouldReadMore(b); offset++ {
-		b = readOneByte(r, offset)
+	for shouldReadMore(b) {
+		b, _ = r.ReadByte()
 
 		sizeBytes = append(sizeBytes, b&0b0111_1111)
 	}
+
 	slices.Reverse(sizeBytes)
 
 	size := 0
@@ -121,11 +95,29 @@ func parseObjTypeAndSize(r *bytes.Reader) (packObjType, int, error) {
 		size = (size << 7) + int(b)
 	}
 
+	return size
+}
+
+/**
+* Pass the reader seeked to the correct offset
+ */
+func parseObjTypeAndSize(r *bytes.Reader) (packObjType, int, error) {
+
+	firstByte, _ := r.ReadByte()
+
+	objType := getObjType(firstByte)
+
+	sizeByte := firstByte & 0b0000_1111
+
+	size := 0
+
+	if shouldReadMore(firstByte) {
+		size = parseSizeEncoding(r)
+	}
+
 	// this is UNCOMPRESSED size NOT compressed size
 	// more below
-	size = (size << 4) + int(firstByte)
-
-	r.Seek(int64(offset), io.SeekStart)
+	size = (size << 4) + int(sizeByte)
 
 	return objType, size, nil
 }
@@ -174,14 +166,15 @@ func (pack Pack) parseOFSDeltaObj(r *bytes.Reader, ogOffset int64) (object.Objec
 	instructionsData, err := object.Decompress(r)
 
 	if err != nil {
-		return object.ObjectContents{}, err
+		return object.ObjectContents{}, fmt.Errorf("err while decompressing, %v", err)
 	}
-
-	var objData []byte
 
 	instructionsReader := bytes.NewReader(*instructionsData)
 
-	instructionsReader.Seek(4, io.SeekStart)
+	parseSizeEncoding(instructionsReader)
+	objSize := parseSizeEncoding(instructionsReader)
+
+	objData := make([]byte, objSize)
 
 	for {
 		instruction, err := instructionsReader.ReadByte()
@@ -285,7 +278,7 @@ func (pack Pack) GetObjAt(offset int64) (object.ObjectContents, error) {
 	data, err := object.Decompress(&pack.fileReader)
 
 	if err != nil {
-		return object.ObjectContents{}, err
+		return object.ObjectContents{}, fmt.Errorf("err while decompressing data, %v", err)
 	}
 
 	if len(*data) != size {

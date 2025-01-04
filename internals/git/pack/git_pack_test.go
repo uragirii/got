@@ -52,7 +52,7 @@ func TestFromIdxFile(t *testing.T) {
 
 	p := pack.ParsePackFile(*packReader, idx)
 
-	for _, item := range output[0:200:200] {
+	for _, item := range output {
 		t.Run(fmt.Sprintf("Testing for %s", item.SHA), func(t *testing.T) {
 			sha, err := sha.FromString(item.SHA)
 
