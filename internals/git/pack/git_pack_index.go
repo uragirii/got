@@ -4,8 +4,12 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"io"
 	"io/fs"
+	"path"
+	"strings"
 
+	"github.com/uragirii/got/internals/git/object"
 	"github.com/uragirii/got/internals/git/sha"
 )
 
@@ -13,6 +17,7 @@ const _SUPPORTED_VERSION uint32 = 2
 const _HeaderSize = 8
 const _FanoutTableLen = 0x100
 const _FanoutTableSize = _FanoutTableLen * 4 // 256 4-byte fanout enteries
+const _PackDir = "objects/pack"
 
 var _MagicHeaderBytes = []byte{0xff, 0x74, 0x4f, 0x63} // \377tOc
 
@@ -185,4 +190,54 @@ func FromIdxFile(fsys fs.FS, path string) (*PackIndex, error) {
 		offsetOrder: shaList,
 	}, nil
 
+}
+
+func FindObj(sha *sha.SHA, gitFs fs.FS) (object.ObjectContents, error) {
+
+	packs, err := fs.ReadDir(gitFs, _PackDir)
+
+	if err != nil {
+		return object.ObjectContents{}, err
+	}
+
+	for _, packFile := range packs {
+		if !strings.HasSuffix(packFile.Name(), ".idx") {
+			continue
+		}
+
+		idx, err := FromIdxFile(gitFs, path.Join(_PackDir, packFile.Name()))
+
+		if err != nil {
+			return object.ObjectContents{}, err
+		}
+
+		_, ok := idx.GetObjOffset(sha)
+
+		if !ok {
+			continue
+		}
+
+		packFileName := packFile.Name()[0:45] + ".pack"
+
+		packFileReader, err := gitFs.Open(path.Join(_PackDir, packFileName))
+
+		if err != nil {
+			return object.ObjectContents{}, err
+		}
+
+		b, err := io.ReadAll(packFileReader)
+
+		if err != nil {
+			return object.ObjectContents{}, err
+		}
+
+		r := bytes.NewReader(b)
+
+		pack := ParsePackFile(*r, idx)
+
+		return pack.GetObj(sha)
+
+	}
+
+	return object.ObjectContents{}, nil
 }
