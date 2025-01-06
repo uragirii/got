@@ -10,7 +10,7 @@ import (
 )
 
 // TODO: use from git tags
-var version string = "0.0.0-pre-alpha"
+var version string = ""
 
 var SUPPORTED_COMMANDS []*internals.Command = []*internals.Command{
 	cmd.HASH_OBJECT,
@@ -28,8 +28,11 @@ func main() {
 
 	flag.Parse()
 
+	internals.SetupVersion(version)
+
 	if *isVersion {
-		fmt.Printf("got version %s\n", version)
+
+		fmt.Printf("got version %s\n", internals.Version)
 		return
 	}
 

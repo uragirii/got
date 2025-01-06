@@ -4,7 +4,9 @@ run:
 	go run ./cmd/main.go
 
 got: $(SOURCES)
-	go build -o build/got
+	$(eval GIT_TAG = $(shell git describe --tags))
+
+	go build -ldflags="-X main.version=$(GIT_TAG)" -o build/got
 
 test:
 	go test ./...
