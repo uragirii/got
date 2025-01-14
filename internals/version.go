@@ -24,3 +24,7 @@ func SetupVersion(v string) {
 
 	Version = fmt.Sprintf("%s-%s", v, revision[0:7])
 }
+
+func Agent() string {
+	return fmt.Sprintf("got/%s", Version[1:])
+}

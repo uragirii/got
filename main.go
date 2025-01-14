@@ -20,6 +20,7 @@ var SUPPORTED_COMMANDS []*internals.Command = []*internals.Command{
 	cmd.CAT_FILE,
 	cmd.ADD,
 	cmd.COMMIT,
+	cmd.CLONE,
 }
 
 func main() {
